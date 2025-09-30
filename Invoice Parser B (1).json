@@ -1,0 +1,1002 @@
+{
+  "name": "Invoice Parser B",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "value": "1SL-U_18WsRz-aUODTooF0s97ZsmTwjyY",
+          "mode": "list",
+          "cachedResultName": "AI Bookkeeper",
+          "cachedResultUrl": "https://drive.google.com/drive/folders/1SL-U_18WsRz-aUODTooF0s97ZsmTwjyY"
+        },
+        "event": "fileCreated",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "8d748809-64db-4863-b525-40248b8a7a68",
+      "name": "Uploaded in Ai bookkeeper",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "KHseSOBb8hH0hXkn",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "move",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "1-JApN2_ZmWX6v1kYwSx0cR_pJgu-748x",
+          "mode": "list",
+          "cachedResultName": "Uncategorized",
+          "cachedResultUrl": "https://drive.google.com/drive/folders/1-JApN2_ZmWX6v1kYwSx0cR_pJgu-748x"
+        }
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        208,
+        0
+      ],
+      "id": "1421b0cf-3478-40fb-9891-f2907418a8bf",
+      "name": "Move to uncategorized",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "KHseSOBb8hH0hXkn",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $('Uploaded in Ai bookkeeper').item.json.id }}",
+          "mode": "id"
+        },
+        "options": {
+          "fields": [
+            "webViewLink"
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        416,
+        0
+      ],
+      "id": "32e4c653-30da-4731-891a-af6098cc605f",
+      "name": "Get file link",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "KHseSOBb8hH0hXkn",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "dab46baf-60d6-4bce-90df-e7c239b3c24c",
+              "name": "fileLink",
+              "value": "={{ $json.webViewLink }}",
+              "type": "string"
+            },
+            {
+              "id": "2c479da8-76fd-4e51-af7c-90ba063afb89",
+              "name": "fileID",
+              "value": "={{ $('Move to uncategorized').item.json.id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        624,
+        0
+      ],
+      "id": "f64edf99-5357-4a6a-9aa1-3d7f93accc83",
+      "name": "Set Fields"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        832,
+        0
+      ],
+      "id": "8336b815-afc4-4b40-8e6a-c1d46a7c6552",
+      "name": "Loop Over Invoices"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.pdf.co/v1/ai-invoice-parser",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "url",
+              "value": "={{ $json.fileLink }}"
+            },
+            {
+              "name": "inline",
+              "value": "true"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1040,
+        0
+      ],
+      "id": "36174161-c0a7-41ef-bebc-595e1ef4f61e",
+      "name": "Send to Pdf co",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "iXOpa6jYOFKqbTYs",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1248,
+        0
+      ],
+      "id": "18e4b166-c1b5-4536-b62b-51749316d344",
+      "name": "Wait",
+      "webhookId": "1b690ed4-7c92-4feb-adff-816b71357d77"
+    },
+    {
+      "parameters": {
+        "url": "https://api.pdf.co/v1/job/check",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "jobID",
+              "value": "={{ $json.jobId }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1456,
+        0
+      ],
+      "id": "195fee80-312b-4213-9eaf-feb76058393b",
+      "name": "Receive from pdf co",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "iXOpa6jYOFKqbTYs",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.status }}",
+                    "rightValue": "working",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "a2104726-e87a-45e5-baff-731e8a026e46"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "738dafc3-e6f3-406d-826b-209ae32c635d",
+                    "leftValue": "={{ $json.status }}",
+                    "rightValue": "success",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        1664,
+        0
+      ],
+      "id": "4cd0a889-cde1-4eab-9b1e-d715dee4dc60",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [\n  {\n    json: {\n      parsedInvoice: JSON.stringify($json.body)\n    }\n  }\n]"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1888,
+        0
+      ],
+      "id": "bd9e969b-6df0-4ee0-8202-dffff0f7a75d",
+      "name": "Turn into text"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o",
+          "mode": "list",
+          "cachedResultName": "GPT-4O"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "# Role & Context\nYou're an expert invoice analyzer. You will be presented a parsed invoice. Your job is to extract certain details in a JSON format.\n\n# Instructions\nOutput the following data as JSON:\n\n### Vendor name\nThe name of the vendor. Remove any dots and comma. Also remove any legal entity designators (i.e. LLC, Inc, GmbH) from the name.\n\n### Invoice number\nThe number of the invoice\n\n### Month\nThe invoice date, specifically the year and month. It must be formatted as \"YYYY-MM\" (i.e. \"2025-01\" in this example, the invoice date is in January 2025)\n\n### Date\nThe full invoice date, including year, month, and day. It must be formatted as \"YYYY-MM-DD\" (i.e. \"2025-01-31\" in this example, the invoice date is in January 31, 2025)\n\n### Type\nMust be one of the following options:\n- \"Expense\" -> For invoices billed to one of my companies (we are the client)\n- \"Income\" -> For invoices billed from one of my companies to a client (we are the vendor)\n\n# Example\n\"Vendor name\": \"Typeform\",\n\"Invoice number\": \"IN-2025-0012932\",\n\"Month\": \"2025-02\",\n\"Date\": \"2025-02-14\",\n\"Type\": \"Expense\"",
+              "role": "system"
+            },
+            {
+              "content": "={{ $json.parsedInvoice }}"
+            }
+          ]
+        },
+        "jsonOutput": true,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        2096,
+        0
+      ],
+      "id": "83461035-6b37-41bc-8e1d-ac505681d095",
+      "name": "Extract Details",
+      "credentials": {
+        "openAiApi": {
+          "id": "DlCQrte0DfhZBXjK",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $('Loop Over Invoices').item.json.fileID }}",
+          "mode": "id"
+        },
+        "newUpdatedFileName": "={{ $('Extract Details').item.json.message.content['Date'] }} - {{ $('Extract Details').item.json.message.content['Vendor name'] }} - {{ $('Extract Details').item.json.message.content['Invoice number'] }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        2448,
+        0
+      ],
+      "id": "b9ab767c-12d7-4184-849c-a22ce35b7b1b",
+      "name": "Rename file",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "KHseSOBb8hH0hXkn",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "queryString": "={{ $('Extract Details').item.json.message.content.Month }}",
+        "limit": 1,
+        "filter": {
+          "folderId": {
+            "__rl": true,
+            "value": "1mIpL9Xf1IUyWEnyulUXuEe2ZOFvG58DE",
+            "mode": "list",
+            "cachedResultName": "Receipts",
+            "cachedResultUrl": "https://drive.google.com/drive/folders/1mIpL9Xf1IUyWEnyulUXuEe2ZOFvG58DE"
+          }
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        2656,
+        0
+      ],
+      "id": "b4c76f54-70f7-42e2-8dcd-c9375cbef223",
+      "name": "Month",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "KHseSOBb8hH0hXkn",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "queryString": "={{ $('Extract Details').item.json.message.content.Type }}",
+        "returnAll": true,
+        "filter": {
+          "folderId": {
+            "__rl": true,
+            "value": "={{ $json.id }}",
+            "mode": "id"
+          }
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        2864,
+        0
+      ],
+      "id": "66c962b4-f442-4401-85cc-b65a7906e7f6",
+      "name": "Expense/Income",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "KHseSOBb8hH0hXkn",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "move",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $('Loop Over Invoices').item.json.fileID }}",
+          "mode": "id"
+        },
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        }
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        3072,
+        0
+      ],
+      "id": "a8f679cb-1404-4670-bbb6-45b7888c5243",
+      "name": "Move to folder",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "KHseSOBb8hH0hXkn",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Here is the parsed invoice:\n{{ $('Turn into text').item.json.parsedInvoice }}\n\nType (Income or Expense) of the invoice:\n{{ $('Extract Details').item.json.message.content.Type }}",
+        "options": {
+          "systemMessage": "=# Role\nYou are an expert bookkeeper with exceptional skills in analyzing invoices and matching them with transactions from our bank account.\n\n# Context\nYou will be provided with a parsed invoice that have been processed through an OCR to make it readable for you. You have access to a google Sheet containing a comprehensive list of our bank transactions. Your goal is to match each invoice with a corresponding transaction or, if no match is found, to document the invoice details in a separate sheet for unmatched receipts. This process is crucial for maintaining accurate financial records and ensuring seamless accounting operations.\n\n# Objectives\n1. Analyze and comprehend the details of each invoice.\n2. Attempt to match the invoice with a transaction from our bank account records.\n3.1 If you found a match: update the corresponding row in the Google Sheet.\n3.2 If you haven't found a match: Insert the data of the invoice into a different Sheet.\n\n# Instructions / SOP\nThink step-by-step through the following instructions to ensure precise and effective execution:\n\n1. Analyze the invoice: Thoroughly review the parsed invoice information provided by pdf.co (our OCR) to understand its details.\n\n2. Retrieve transactions: Use the 'Get Transactions' tool to access all our bank transactions from our Google Sheet. Transactions that don't have an invoice link yet haven't been matched. You want to focus on these. Also only look for transactions that are within a date range of the invoice.\n\n3. Try to match with transaction: Compare the invoice with transactions by examining the date, amount, and description.\nImportant notes:\n- The transaction date will be close (usually within a few days) to the invoice date. But it can be different because it can take some time for payment processing and the transaction being actually listed in our bank.\n- Only look for transactions that don't have a link to a receipt yet. This means the transaction hasn't been matched with an invoice yet.\n- Only match it with a transaction if you are very sure that your invoice matched it. Otherwise store it in the unmatched invoices.\n\n4.1 If you found a matching transaction:\n- Use the 'Match Transaction' tool to update corresponding transaction row in the Google Sheet, as described in the tool.\n- You need to provide the tool the matching row number in order to update the row in the Google Sheet.\n- Insert the invoice number into the corresponding column.\n- Insert the Google Drive link to the invoice into the invoice link column.\n\n4.2 If you haven't found a matching transaction:\nIf no match is found or uncertainty exists, use the 'Unmatched Receipt' Module.\n- Invoice Date: Date of the invoice in the format YYYY-MM-DD (i.e. 2025-01-31)\n- Invoice Type: Insert \"↗\" for income or \"↘\" for expense. \n- Amount: Total amount of the invoice in the format 123.45. Use positive amount if the invoice is an income. Use negative amount if the invoice is an expense.\n- Description: The name of the vendor\n- Link: Google Drive link to the invoice. The link should match {{ $('Get file link').item.json.webViewLink }}\n\n# Tools and Subagents\n1. 'Get Transactions' tool\n- Purpose: Retrieve all bank transactions from the bookkeeping sheet.\n- When to use: Always use this tool to access transaction data before attempting to match invoices.\n\n2. 'Match Transaction' tool\n- Purpose: Update the transaction sheet with matched invoice details.\n- When to use: Use this tool only after successfully matching an invoice with a transaction.\n\n3. 'Unmatched Receipt' tool:\n- Purpose: Document invoices that cannot be matched with any transaction.\n- When to use: Use this module when no matching transaction is found or if there is uncertainty.\n\n# Rules & Notes\n- It is critical to your success to ensure that all invoice details are accurately matched or recorded. Double-check all entries to prevent errors.\n- Never fabricate or assume information. Stick strictly to the data provided to maintain the integrity of financial records."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        3280,
+        0
+      ],
+      "id": "5e26465d-50a7-4569-907a-1551de93e07c",
+      "name": "AI Bookkeeper"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o",
+          "mode": "list",
+          "cachedResultName": "gpt-4o"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        3152,
+        208
+      ],
+      "id": "2e08845f-129b-40a9-84f6-abe2a66c5496",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "DlCQrte0DfhZBXjK",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "12fs7jFJ6a2EW85l_vlWVHepZpWWJ_lg0oLNgscnDgvM",
+          "mode": "list",
+          "cachedResultName": "Bookkeeping",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/12fs7jFJ6a2EW85l_vlWVHepZpWWJ_lg0oLNgscnDgvM/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Transactions",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/12fs7jFJ6a2EW85l_vlWVHepZpWWJ_lg0oLNgscnDgvM/edit#gid=0"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        3440,
+        208
+      ],
+      "id": "77f41172-7c08-46e7-aa3b-afe77181923e",
+      "name": "Get Transactions",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "e7fvwWlkeRSNTIAZ",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "12fs7jFJ6a2EW85l_vlWVHepZpWWJ_lg0oLNgscnDgvM",
+          "mode": "list",
+          "cachedResultName": "Bookkeeping",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/12fs7jFJ6a2EW85l_vlWVHepZpWWJ_lg0oLNgscnDgvM/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Transactions",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/12fs7jFJ6a2EW85l_vlWVHepZpWWJ_lg0oLNgscnDgvM/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "row_number": "={{ $fromAI('matchingRow') }}",
+            "Invoice Number": "={{ $fromAI('invoiceNumber') }}",
+            "Link": "={{ $fromAI('invoiceLink') }}",
+            "Description": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Description', ``, 'string') }}",
+            "invoiceType": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('invoiceType', ``, 'string') }}"
+          },
+          "matchingColumns": [
+            "row_number"
+          ],
+          "schema": [
+            {
+              "id": "Date",
+              "displayName": "Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Amount",
+              "displayName": "Amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Description",
+              "displayName": "Description",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Invoice Number",
+              "displayName": "Invoice Number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Link",
+              "displayName": "Link",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "invoiceType",
+              "displayName": "invoiceType",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        3552,
+        208
+      ],
+      "id": "b37b8b9f-c175-4f17-9b29-d0ea457b84eb",
+      "name": "Match Transactions",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "e7fvwWlkeRSNTIAZ",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "12fs7jFJ6a2EW85l_vlWVHepZpWWJ_lg0oLNgscnDgvM",
+          "mode": "list",
+          "cachedResultName": "Bookkeeping",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/12fs7jFJ6a2EW85l_vlWVHepZpWWJ_lg0oLNgscnDgvM/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 412988415,
+          "mode": "list",
+          "cachedResultName": "Unmatched Receipts",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/12fs7jFJ6a2EW85l_vlWVHepZpWWJ_lg0oLNgscnDgvM/edit#gid=412988415"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Date": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Date', ``, 'string') }}",
+            "invoiceAmount": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('invoiceAmount', ``, 'string') }}",
+            "invoiceVendor": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('invoiceVendor', ``, 'string') }}",
+            "invoiceNumber": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('invoiceNumber', ``, 'string') }}",
+            "invoiceLink": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('invoiceLink', ``, 'string') }}",
+            "invoiceType": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('invoiceType', ``, 'string') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Date",
+              "displayName": "Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "invoiceAmount",
+              "displayName": "invoiceAmount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "invoiceVendor",
+              "displayName": "invoiceVendor",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "invoiceNumber",
+              "displayName": "invoiceNumber",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "invoiceLink",
+              "displayName": "invoiceLink",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "invoiceType",
+              "displayName": "invoiceType",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        3664,
+        208
+      ],
+      "id": "c5c38bb0-c330-4050-885c-80335d3d8e28",
+      "name": "Unmatched Receipts",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "e7fvwWlkeRSNTIAZ",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Uploaded in Ai bookkeeper": {
+      "main": [
+        [
+          {
+            "node": "Move to uncategorized",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Move to uncategorized": {
+      "main": [
+        [
+          {
+            "node": "Get file link",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get file link": {
+      "main": [
+        [
+          {
+            "node": "Set Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Fields": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Invoices",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Invoices": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Send to Pdf co",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send to Pdf co": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Receive from pdf co",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Receive from pdf co": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Turn into text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Turn into text": {
+      "main": [
+        [
+          {
+            "node": "Extract Details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Details": {
+      "main": [
+        [
+          {
+            "node": "Rename file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rename file": {
+      "main": [
+        [
+          {
+            "node": "Month",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Month": {
+      "main": [
+        [
+          {
+            "node": "Expense/Income",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Expense/Income": {
+      "main": [
+        [
+          {
+            "node": "Move to folder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Move to folder": {
+      "main": [
+        [
+          {
+            "node": "AI Bookkeeper",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Bookkeeper",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Transactions": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Bookkeeper",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Match Transactions": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Bookkeeper",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Unmatched Receipts": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Bookkeeper",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Bookkeeper": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Invoices",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "90d1c74d-5e6b-4b23-b000-97c1b5528127",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "55bbf725d80c44aa17225217581774a85db5cccf5365a2ba309a549083f66648"
+  },
+  "id": "DOVfSYM6iG9gjotc",
+  "tags": []
+}
