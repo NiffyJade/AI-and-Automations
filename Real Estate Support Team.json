@@ -51,7 +51,7 @@
     {
       "parameters": {
         "options": {
-          "systemMessage": "# Role\nYou are a helpful, charming real estate assistant who answers property questions for clients. Use the \"Property Q&A\" tool to answer all questions users have about properties, listing agents, and availability-never deliver information from other sources.\n\n# Tools\n- Use the \"Property Q&A\" tool to retrieve info on property info & listing agents to answer users' questions. Gather the record's data corresponding to the user's question and summarize it in a concise reply.\n- If the user expresses interest in a property, ask for their name and email. Then, use the \"Notify an Agent\" tool to send the agent an email summarizing the following: the property they want to see, their name, and email so the agent can follow up.\n- Use the calculator tool if the user asks for any numerical calculations"
+          "systemMessage": "# Role\nYou are a helpful, charming real estate assistant who answers property questions for clients. Use the \"Property Q&A\" tool to answer all questions users have about properties, listing agents, and availability-never deliver information from other sources.\n\n# Tools\n- Use the \"Property Q&A\" tool to retrieve info on property info & listing agents to answer users' questions. Gather the record's data corresponding to the user's question and summarize it in a concise reply.\n- If the user expresses interest in a property, ask for their name and email. Then, use the \"Notify an Agent\" tool to send the agent an email summarizing the following: the property they want to see, their name, and email so the agent can follow up.\n- Use the \"Update Database1\" tool to update the user's name, email, information and interests.\n- Use the calculator tool if the user asks for any numerical calculations"
         }
       },
       "type": "@n8n/n8n-nodes-langchain.agent",
@@ -182,7 +182,7 @@
     {
       "parameters": {
         "options": {
-          "systemMessage": "=# Role\nYou are an internal facing real estate assistant designed to help real estate agents with various daily tasks. You have access to 4 tools. Always respond to the user when you're finished to confirm that the task is done.\n\nFor reference, today is {{ $now }}.\n\n# Tools\n- Use the \"Update Database\" tool to update the real estate base with one record containing the given information.\n- Use the \"Book a meeting\" tool to set an event at the given time. All events are 1 hour.\n- Use the \"Client Serach\" tool to find information (interests, budget, email) for a given client by name. Respond to the user with the requested info.\n- Use the \"Draft a message\" tool to compose a message to the given recipient containing the given content. Always use a concise yet friendly tone.\n- Use the calculator for accurate calculations."
+          "systemMessage": "=# Role\nYou are an internal facing real estate assistant designed to help real estate agents with various daily tasks. You have access to 4 tools. Always respond to the user when you're finished to confirm that the task is done.\n\nFor reference, today is {{ $now }}.\n\n# Tools\n- Use the \"Update Database\" tool to update the real estate base with one record containing the given information.\n- Use the \"Book a meeting\" tool to set an event at the given time. All events are 1 hour.\n- Use the \"Client Search\" tool to find information (interests, budget, email) for a given client by name. Respond to the user with the requested info.\n- Use the \"Draft a message\" tool to compose a message to the given recipient containing the given content. Always use a concise yet friendly tone.\n- Use the calculator for accurate calculations."
         }
       },
       "type": "@n8n/n8n-nodes-langchain.agent",
@@ -283,7 +283,7 @@
         "filtersUI": {
           "values": [
             {
-              "lookupColumn": "Name",
+              "lookupColumn": "Client Name",
               "lookupValue": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('values0_Value', ``, 'string') }}"
             }
           ]
@@ -318,93 +318,6 @@
     },
     {
       "parameters": {
-        "operation": "appendOrUpdate",
-        "documentId": {
-          "__rl": true,
-          "value": "1o5pRojpuQv62_rLNgYeZh-B2WRYCOu50Nd7zhzA8xec",
-          "mode": "list",
-          "cachedResultName": "n8n Real Estate Leads",
-          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1o5pRojpuQv62_rLNgYeZh-B2WRYCOu50Nd7zhzA8xec/edit?usp=drivesdk"
-        },
-        "sheetName": {
-          "__rl": true,
-          "value": "gid=0",
-          "mode": "list",
-          "cachedResultName": "Properties",
-          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1o5pRojpuQv62_rLNgYeZh-B2WRYCOu50Nd7zhzA8xec/edit#gid=0"
-        },
-        "columns": {
-          "mappingMode": "defineBelow",
-          "value": {
-            "Listing Agent": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Listing_Agent', ``, 'string') }}",
-            "Property Address": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Property_Address', ``, 'string') }}",
-            "Property Info": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Property_Info', ``, 'string') }}",
-            "Status": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Status', ``, 'string') }}"
-          },
-          "matchingColumns": [
-            "Property Address"
-          ],
-          "schema": [
-            {
-              "id": "Listing Agent",
-              "displayName": "Listing Agent",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "Property Address",
-              "displayName": "Property Address",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "Property Info",
-              "displayName": "Property Info",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "Status",
-              "displayName": "Status",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            }
-          ],
-          "attemptToConvertTypes": false,
-          "convertFieldsToString": false
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.googleSheetsTool",
-      "typeVersion": 4.7,
-      "position": [
-        1200,
-        -80
-      ],
-      "id": "958bd268-a9b7-49c7-b041-9deb035b3ecb",
-      "name": "Update Database",
-      "credentials": {
-        "googleSheetsOAuth2Api": {
-          "id": "e7fvwWlkeRSNTIAZ",
-          "name": "Google Sheets account"
-        }
-      }
-    },
-    {
-      "parameters": {
         "resource": "draft",
         "subject": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Subject', ``, 'string') }}",
         "message": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Message', ``, 'string') }}",
@@ -425,6 +338,117 @@
         "gmailOAuth2": {
           "id": "F0lfEWr4MOKuVtfe",
           "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "1o5pRojpuQv62_rLNgYeZh-B2WRYCOu50Nd7zhzA8xec",
+          "mode": "list",
+          "cachedResultName": "n8n Real Estate Leads",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1o5pRojpuQv62_rLNgYeZh-B2WRYCOu50Nd7zhzA8xec/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1200295260,
+          "mode": "list",
+          "cachedResultName": "Clients",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1o5pRojpuQv62_rLNgYeZh-B2WRYCOu50Nd7zhzA8xec/edit#gid=1200295260"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Status": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Status', ``, 'string') }}",
+            "Property Address": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Property_Address__using_to_match_', ``, 'string') }}",
+            "Listing Agent": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Listing_Agent', ``, 'string') }}",
+            "Property Info": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Property_Info', ``, 'string') }}",
+            "Client Name": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Client_Name', ``, 'string') }}",
+            "Client Email": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Client_Email', ``, 'string') }}"
+          },
+          "matchingColumns": [
+            "Property Address"
+          ],
+          "schema": [
+            {
+              "id": "Listing Agent",
+              "displayName": "Listing Agent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Property Address",
+              "displayName": "Property Address",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Property Info",
+              "displayName": "Property Info",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Client Name",
+              "displayName": "Client Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Client Email",
+              "displayName": "Client Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        944,
+        304
+      ],
+      "id": "a4b05fe2-5af1-433d-a359-665175cd7894",
+      "name": "Update Database1",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "e7fvwWlkeRSNTIAZ",
+          "name": "Google Sheets account"
         }
       }
     }
@@ -570,7 +594,7 @@
         ]
       ]
     },
-    "Update Database": {
+    "Draft a Message": {
       "ai_tool": [
         [
           {
@@ -581,11 +605,11 @@
         ]
       ]
     },
-    "Draft a Message": {
+    "Update Database1": {
       "ai_tool": [
         [
           {
-            "node": "Internal AI Agent",
+            "node": "AI Client Agent",
             "type": "ai_tool",
             "index": 0
           }
@@ -597,7 +621,7 @@
   "settings": {
     "executionOrder": "v1"
   },
-  "versionId": "c10c5f50-02f5-4f6d-911a-17b225611812",
+  "versionId": "92991b3b-3640-42c6-9052-5ac0020de0d0",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "55bbf725d80c44aa17225217581774a85db5cccf5365a2ba309a549083f66648"
