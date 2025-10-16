@@ -1,0 +1,270 @@
+{
+  "name": "SEO Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "url"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        304
+      ],
+      "id": "dc002c31-0eff-4b4c-972c-39dc73a1929e",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are an expert SEO Manager with unmatched expertise in website optimization for Google. Analyze the HTML code of the provided landing page and conduct a comprehensive On-Page Technical SEO Audit. Evaluate every technical SEO aspect, then deliver your findings in a clean, organized list of bullet points segmented into three categories:\n\nCritical Issues: Problems that must be fixed immediately.\n\nQuick wins: Simple fixes with a significant impact.\n\nOpportunities for Improvement: Changes that require more effort but offer potential benefits.\n\nOutput only the audit findings with no introductory or explanatory text.\nLanding page content: {{ $json.data }}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        448,
+        0
+      ],
+      "id": "72794966-d94f-499f-b4d3-cf6d14a20987",
+      "name": "Technical Audit"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4.1-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        528,
+        224
+      ],
+      "id": "13471915-63ca-4dd3-a123-4ab11cb1c37b",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "4Ima9zI6S5bgR0J9",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are an expert SEO Manager with unrivaled expertise in boosting websites to top Google rankings. Analyze the provided webpage content and perform an in-depth SEO Content Audit divided into two sections:\n\nAnalysis:\n\nContent Quality Assessment: Evaluate overall quality, accuracy, and relevance to the target audience.\n\nKeyword Reaearch and Analysis: Identify primary and secondary keywords, assess keyword density, and review keyword placement strategies.\n\nReadability Analysis: Measure readability using metrics such as Flesch-Kincaid Grade Level, Flesch Reading Ease, and the Gunning-Fog Index.\n\nRecommendations:\n\nProvide clear, actionable bullet points aimed at enhancing Google rankings and boosting user engagements.\n\nOutput only the audit findings in a clean and highly readable format with no introductory or explanatory text.\n\nLanding page content: {{ $json.data }}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        448,
+        512
+      ],
+      "id": "27f71908-c2b7-4775-92f4-ce93e0a86de7",
+      "name": "Content Audit"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4.1-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        528,
+        736
+      ],
+      "id": "fd5aa187-9591-49ef-9526-c07f906b0a45",
+      "name": "OpenAI Chat Model1",
+      "credentials": {
+        "openAiApi": {
+          "id": "4Ima9zI6S5bgR0J9",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        224,
+        304
+      ],
+      "id": "ce51a426-0006-4e7c-8993-d739a37e8666",
+      "name": "Scrape"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        800,
+        304
+      ],
+      "id": "d398c41e-091e-402b-9c41-282d96a5d6ee",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        1024,
+        304
+      ],
+      "id": "2151ada2-78f8-4d00-8ccd-f573549523a4",
+      "name": "Aggregate"
+    },
+    {
+      "parameters": {
+        "mode": "markdownToHtml",
+        "markdown": "=# On-Page Technical Audit\n{{ $json.data[0].output }}\n\n# On-Page Content Audit\n{{ $json.data[1].output }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.markdown",
+      "typeVersion": 1,
+      "position": [
+        1248,
+        304
+      ],
+      "id": "6fa74035-b356-466b-9b74-f894d5767b42",
+      "name": "Markdown"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Scrape",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Technical Audit",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Content Audit",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scrape": {
+      "main": [
+        [
+          {
+            "node": "Technical Audit",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Content Audit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Technical Audit": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Content Audit": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate": {
+      "main": [
+        [
+          {
+            "node": "Markdown",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "dba42ac1-a24b-4e90-829c-625efcf6fe1f",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "8a8866a57c012512213aa4b5cdc8a13651cd792f288db0991149de20d6a9753c"
+  },
+  "id": "t12NAVGV5pqdLCNl",
+  "tags": [
+    {
+      "name": "SEO AGENCY",
+      "id": "cI4gPcjTwACwC4CJ",
+      "createdAt": "2025-10-14T09:10:35.444Z",
+      "updatedAt": "2025-10-14T09:10:35.444Z"
+    }
+  ]
+}

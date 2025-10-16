@@ -1,0 +1,512 @@
+{
+  "name": "Real Estate Voice Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are a professional data extractor. Your task is to retrieve property data from the input text.\n\nWhen a property is not defined, just return null.",
+        "hasOutputParser": true,
+        "messages": {
+          "messageValues": [
+            {
+              "type": "HumanMessagePromptTemplate",
+              "message": "=The property: {{ $json.body.message.toolCalls[0].function.arguments.propertyPreferences }}"
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        672,
+        0
+      ],
+      "id": "890cd4f7-6d46-4c14-86f3-bb22da94ebc2",
+      "name": "Basic LLM Chain"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o",
+          "mode": "list",
+          "cachedResultName": "gpt-4o"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        560,
+        208
+      ],
+      "id": "4b785a21-7bda-4e87-8e38-d9a2707c02d2",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "4Ima9zI6S5bgR0J9",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n\t\"type\": \"object\",\n\t\"properties\": {\n\t\t\"bathroomCount\": {\n\t\t\t\"type\": \"number?\"\n\t\t},\n\t\t\"bedroomCount\": {\n\t\t\t\"type\": \"number?\"\n\t\t},\n        \"city\": {\n\t\t\t\"type\": \"string\"\n\t\t},\n        \"propertyType\": {\n\t\t\t\"type\": \"string?\"\n\t\t}\n\t}\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        816,
+        208
+      ],
+      "id": "09d45ba7-d3ff-455a-803b-02414c888d4a",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "url": "https://api.rentcast.io/v1/listings/sale",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "bathrooms",
+              "value": "={{ $json.output.bathroomCount }}"
+            },
+            {
+              "name": "bedrooms",
+              "value": "={{ $json.output.bedroomCount }}"
+            },
+            {
+              "name": "city",
+              "value": "={{ $json.output.city }}"
+            },
+            {
+              "name": "propertyType",
+              "value": "={{ $json.output.propertyType }}"
+            },
+            {
+              "name": "limit",
+              "value": "2"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Api-Key",
+              "value": "fe56f8fde7114177b42c85d059bff253"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1024,
+        0
+      ],
+      "id": "bba2c345-020a-45f1-9d5d-e12c8c8f4a8e",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "include": "specifiedFields",
+        "fieldsToInclude": "addressLine1, squareFootage, price, listingAgent, propertyType",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        1232,
+        0
+      ],
+      "id": "77b2607b-9d05-4066-9527-38c62c1b4dd2",
+      "name": "Aggregate"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are a professional JSON to text converter. You will receive information about properties. Your task is to create a sentence from the provided data. Include all the data you received.\n\nFormat the address to be readable. You don't need to include the zip code.\nExample: st will be street, rd will be road etc..\n\nThe sentence will be read by an AI voice agent to a customer who is looking for a property so it's important to be understandable and readable.\n\nonly include the result without explanation.",
+        "messages": {
+          "messageValues": [
+            {
+              "type": "HumanMessagePromptTemplate",
+              "message": "={{ JSON.stringify($json.data) }}"
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        1440,
+        0
+      ],
+      "id": "988d6e12-95cd-45cc-8a9c-7df24265ac01",
+      "name": "Basic LLM Chain1"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o",
+          "mode": "list",
+          "cachedResultName": "gpt-4o"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        1328,
+        208
+      ],
+      "id": "edabd7ab-3a5b-4b36-93a7-a1f57e3d4f35",
+      "name": "OpenAI Chat Model1",
+      "credentials": {
+        "openAiApi": {
+          "id": "4Ima9zI6S5bgR0J9",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "83c7101f-5ddc-47fa-bbc3-491f94a19952",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -432,
+        208
+      ],
+      "id": "3e83a363-c32d-4cef-baab-0bd275e9eb6b",
+      "name": "Webhook",
+      "webhookId": "83c7101f-5ddc-47fa-bbc3-491f94a19952"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n    \"results\": [\n        {\n            \"toolCallId\": \"{{ $('Webhook').item.json.body.message.toolCalls[0].id }}\",\n            \"result\": \"{{ $json.text.replaceAll(\"\\n\", \"\") }}\"\n        }\n    ]\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        1792,
+        0
+      ],
+      "id": "61352722-265f-4f2a-a05b-ffbb1bfa8467",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.body.message.toolCalls[0].function.name }}",
+                    "rightValue": "getProperties",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "8381fc55-6af0-40c4-8dfd-e6686b1ec150"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "d2c802bb-2eb6-4a09-8062-1b40e3b24f70",
+                    "leftValue": "={{ $json.body.message.toolCallList[0].function.name }}",
+                    "rightValue": "sendBrokerInfo",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.3,
+      "position": [
+        -112,
+        208
+      ],
+      "id": "5896492e-ff52-4e02-a015-19cbb9f0c283",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "You are a professional text formatter. You will receive contact information. Your task is to output it in a structured format.",
+        "hasOutputParser": true,
+        "messages": {
+          "messageValues": [
+            {
+              "type": "HumanMessagePromptTemplate",
+              "message": "=contact info:  {{ $json.body.message.toolCalls[0].function.arguments.contactInfo }}"
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        672,
+        480
+      ],
+      "id": "4072be83-1c34-482b-b3e3-4add9368d872",
+      "name": "Basic LLM Chain2"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o",
+          "mode": "list",
+          "cachedResultName": "gpt-4o"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        560,
+        688
+      ],
+      "id": "ccd15a06-6fba-4e17-95e1-bfa5fa25840f",
+      "name": "OpenAI Chat Model2",
+      "credentials": {
+        "openAiApi": {
+          "id": "4Ima9zI6S5bgR0J9",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n\t\"type\": \"object\",\n\t\"properties\": {\n\t\t\"name\": {\n\t\t\t\"type\": \"string?\"\n\t\t},\n        \"phoneNumber\": {\n\t\t\t\"type\": \"string?\"\n\t\t},\n        \"email\": {\n\t\t\t\"type\": \"string?\"\n\t\t},\n        \"website\": {\n\t\t\t\"type\": \"string?\"\n\t\t}\n\t}\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        816,
+        688
+      ],
+      "id": "296c0c6b-1fd2-47e3-951f-71b9d898a3d2",
+      "name": "Structured Output Parser1"
+    },
+    {
+      "parameters": {
+        "from": "+12183092401",
+        "to": "=+1{{ $json.output.phoneNumber }}",
+        "message": "=property information:  {{ $('Webhook').item.json.body.message.toolCalls[0].function.arguments.propertyInfo }}\n\nContact:\n{{ $json.output.name ?? \"\"}}\n{{ $json.output.phoneNumber ?? \"\"}}\n{{ $json.output.email ?? \"\"}}\n{{ $json.output.website ?? \"\"}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.twilio",
+      "typeVersion": 1,
+      "position": [
+        1024,
+        480
+      ],
+      "id": "3ed4e3ca-8b05-4d2c-9cd7-68c9f5c5e005",
+      "name": "Send an SMS/MMS/WhatsApp message",
+      "credentials": {
+        "twilioApi": {
+          "id": "1MUjfhWbTMq3BccH",
+          "name": "Twilio account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain1": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Basic LLM Chain2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain2",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser1": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Basic LLM Chain2",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain2": {
+      "main": [
+        [
+          {
+            "node": "Send an SMS/MMS/WhatsApp message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "615e170c-a149-4c13-a477-a51f0cd7291a",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "8a8866a57c012512213aa4b5cdc8a13651cd792f288db0991149de20d6a9753c"
+  },
+  "id": "Qjce8EkxnurA6hhu",
+  "tags": []
+}

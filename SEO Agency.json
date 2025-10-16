@@ -1,0 +1,552 @@
+{
+  "name": "SEO Agency",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        96
+      ],
+      "id": "8fa96e4a-7824-4884-b35f-ba55c77bf7f8",
+      "name": "Telegram Trigger",
+      "webhookId": "8255b39e-f9a7-4659-a5b0-afc57d258618",
+      "credentials": {
+        "telegramApi": {
+          "id": "XFskW6cbMw9WGHbl",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('Telegram Trigger').item.json.message.text }}",
+        "options": {
+          "systemMessage": "You are an AI-powered SEO assistant with access to four specialized sub-workflows:\n\n1. On-page SEO Analysis Tool\n     . Input: a URL\n     . Output: a detailed on-page SEO audit (titles, metas, headings, internal links, content recommendations)\n\n2. Blog Post Generator Tool\n     . Input: a topic or keyword and desired length/tone\n     . Output: a full draft blog post with headings, intro, body, conclusion, and SEO-friendly formatting\n- format the output for telegram (html)\n\n3. Keyword Research Tool\n    . Input: a seed topic or competitor domain\n    . Output: a list of high-volume, low-competition keyword suggestions with metrics\n- format the output for telegram (html)\n\n4. Rank Tracking Tool\n    . Input: a keyword\n    . Output: current Google rank (or \"not ranked in top 10\"), delta vs. previous run, updates the sheet\n- format the output for telegram (html)\n\nWhen you receive a user request, follow these steps **in order**:\n\n1. **Interpret Intent**\nIdentify which goal the user has:\n- \"Audit this page\" => On-page SEO Analysis\n- \"Write me a blog post about X\" => Blog Post Generator\n- \"Give me keywords for X\" => Keyword Research\n- \"What's my rank for X?\" => Rank Tracking\n- Or a composite request (e.g. \"audit, suggest keywords, and write a post\") => chain multiple tools\n\n2. **Call the Right Tools**\nUse the tool's name exactly, pass the user's parameters, and wait for its JSON output.\n\n3. **Synthesize & Respond**\n- If only one tool is invoked, return its results in clear, user-friendly prose.\n- If multiple tools are invoked, combine their outputs into a cohesive action plan or report.\n\n4. **Follow-up Questions**\nIf the user's request is missing necessary info (e.g. URL for audit, topic for post), ask a concise follow-up to gather it.\n\n**Do not** invent data or skip steps\n- always run the sub-workflow that delivers the factual result, then translate it into a natural, helpful response.\n\n---\n\n_User examples:_\n- **User:** \"Audit https://example.com/pricing\"\n**Agent:** invokes On-page SEO Analysis -> returns audit -> you explain top issues and quick wins.\n- **User:** \"I need a 1,200-word blog post on 'remote work productivity.'\"\n**Agent:** invokes Blog Post Generator -> returns draft.\n- **User:** \"What keywords should i target around electric bikes?\"\n**Agent:** invokes Keyword Research -> returns 10-15 KW suggestions with volume/competition.\n- **User:** \"How did my rank for 'big data analytics' change?\"\n**Agent:** invokes Rank Tracking -> returns \"moved from 8 to 6\" and updates sheet.\n\nAlways keep the user's SEO goals front and center. Be concise, actionable, and tool-driven."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        928,
+        96
+      ],
+      "id": "9199cb33-0072-4d70-bb15-ebda935c9fe9",
+      "name": "AI Agent",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4.1-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        672,
+        320
+      ],
+      "id": "92a17a26-22f6-4846-9787-7832214de1bd",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "4Ima9zI6S5bgR0J9",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "description": "call this tool to analyze the SEO of a website",
+        "workflowId": {
+          "__rl": true,
+          "value": "t12NAVGV5pqdLCNl",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/t12NAVGV5pqdLCNl",
+          "cachedResultName": "SEO Workflow"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "url": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('url', ``, 'string') }}"
+          },
+          "matchingColumns": [
+            "url"
+          ],
+          "schema": [
+            {
+              "id": "url",
+              "displayName": "url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        928,
+        320
+      ],
+      "id": "605ff854-c4fb-4dde-8a9e-3e69a6a06724",
+      "name": "On-page SEO Tool"
+    },
+    {
+      "parameters": {
+        "description": "call this tool to generate new keywords and search volumes",
+        "workflowId": {
+          "__rl": true,
+          "value": "UwL0Enbq2MYPwhoi",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/UwL0Enbq2MYPwhoi",
+          "cachedResultName": "Keyword Research"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "topic": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('topic', ``, 'string') }}"
+          },
+          "matchingColumns": [
+            "topic"
+          ],
+          "schema": [
+            {
+              "id": "topic",
+              "displayName": "topic",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        1056,
+        320
+      ],
+      "id": "15cd6849-2ccd-4be5-9424-2f66d0efa222",
+      "name": "Keyword Generator Tool"
+    },
+    {
+      "parameters": {
+        "description": "call this tool to generate SEO friendly blogs",
+        "workflowId": {
+          "__rl": true,
+          "value": "YBSctSC96cxTKuKP",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/YBSctSC96cxTKuKP",
+          "cachedResultName": "Blog Post Generator"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "blog topic": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('blog_topic', ``, 'string') }}"
+          },
+          "matchingColumns": [
+            "blog topic"
+          ],
+          "schema": [
+            {
+              "id": "blog topic",
+              "displayName": "blog topic",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        1184,
+        320
+      ],
+      "id": "91e0a723-892d-4592-8b49-ff3dd69511a7",
+      "name": "Blog Generation Tool"
+    },
+    {
+      "parameters": {
+        "description": "call this tool to track your rankings for keywords within Google Search",
+        "workflowId": {
+          "__rl": true,
+          "value": "S2e90VZXpafCsP8G",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/S2e90VZXpafCsP8G",
+          "cachedResultName": "Rank Tracking"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "keyword": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('keyword', ``, 'string') }}",
+            "url": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('url', ``, 'string') }}"
+          },
+          "matchingColumns": [
+            "keyword"
+          ],
+          "schema": [
+            {
+              "id": "keyword",
+              "displayName": "keyword",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "url",
+              "displayName": "url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        1312,
+        320
+      ],
+      "id": "9eb3fb2a-5069-47a0-94dd-6cedf0910830",
+      "name": "Rank Tracking Tool"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "={{ $json.output }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1744,
+        0
+      ],
+      "id": "e05aa7dc-e618-4c1d-a8da-85aaa2f97df4",
+      "name": "Send a text message",
+      "webhookId": "7c3582eb-1e45-4f71-898d-00b367a33973",
+      "credentials": {
+        "telegramApi": {
+          "id": "XFskW6cbMw9WGHbl",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "4c3f9f02-f789-41b3-84bc-9aa642a2fb8e",
+              "name": "Chat ID",
+              "value": "={{ $json.message.chat.id }}",
+              "type": "number"
+            },
+            {
+              "id": "90495d27-d958-4c6f-8a7f-7c26ef6aa690",
+              "name": "Text",
+              "value": "={{ $json.message.text }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        224,
+        96
+      ],
+      "id": "279cb59f-85d3-49fa-887f-20371e91d9e6",
+      "name": "Set Chat ID"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json['Chat ID'] }}",
+        "text": "Processing your request...",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        448,
+        96
+      ],
+      "id": "91e4cba0-3539-4987-8e26-c703bed14bbe",
+      "name": "Send a text message1",
+      "webhookId": "9566e657-67f0-47b2-ac4b-4251706af0a5",
+      "credentials": {
+        "telegramApi": {
+          "id": "XFskW6cbMw9WGHbl",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "530113da-a148-46e2-b0f1-8a72a50e9973",
+              "leftValue": "={{ $json.error }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "empty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1520,
+        96
+      ],
+      "id": "9031f0c8-8810-4594-a746-90ba4146d33d",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Set Chat ID').item.json.chatId }}",
+        "text": "=❌ Sorry, something went wrong processing your request.\n\nPlease try again or rephrase your question.",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1744,
+        192
+      ],
+      "id": "78b4253b-df5e-4822-b5b2-15f79e837c1f",
+      "name": "Error Handler",
+      "webhookId": "a8a29b45-3d5a-441f-8274-1baca13e13dd",
+      "credentials": {
+        "telegramApi": {
+          "id": "XFskW6cbMw9WGHbl",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Set Chat ID').item.json['Chat ID'] }}",
+        "contextWindowLength": 99
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        800,
+        320
+      ],
+      "id": "cb03a2d7-0ab9-4c44-946c-c602662ed634",
+      "name": "Simple Memory"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Set Chat ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "On-page SEO Tool": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Keyword Generator Tool": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Blog Generation Tool": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rank Tracking Tool": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Chat ID": {
+      "main": [
+        [
+          {
+            "node": "Send a text message1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a text message1": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error Handler",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "613e337e-c578-4cb8-bb53-598f89db8245",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "8a8866a57c012512213aa4b5cdc8a13651cd792f288db0991149de20d6a9753c"
+  },
+  "id": "oDVIxLHHsvmd9Juw",
+  "tags": [
+    {
+      "createdAt": "2025-10-14T09:10:35.444Z",
+      "updatedAt": "2025-10-14T09:10:35.444Z",
+      "id": "cI4gPcjTwACwC4CJ",
+      "name": "SEO AGENCY"
+    }
+  ]
+}

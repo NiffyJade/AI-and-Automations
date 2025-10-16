@@ -1,0 +1,339 @@
+{
+  "name": "Rank Tracking",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "keyword"
+            },
+            {
+              "name": "url"
+            }
+          ]
+        }
+      },
+      "id": "c055762a-8fe7-4141-a639-df2372f30060",
+      "typeVersion": 1.1,
+      "name": "When Executed by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "position": [
+        272,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://serpapi.com/search",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "serpApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "q",
+              "value": "={{ $json.keyword }}"
+            },
+            {
+              "name": "location",
+              "value": "United States"
+            },
+            {
+              "name": "num",
+              "value": "10"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        496,
+        352
+      ],
+      "id": "a38208c2-069f-4efa-bd47-18d24900e3c8",
+      "name": "HTTP Request",
+      "credentials": {
+        "serpApi": {
+          "id": "ed2hcB7c1ayLlodu",
+          "name": "SerpAPI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return items.map(item => {\n  const url = $('When Executed by Another Workflow').first().json.url;\n  const cleanUrl = url.replace(/^https?:\\/\\//, '');\n  \n  const results = item.json.organic_results || [];\n  const found = results.find(r => r.link.includes(cleanUrl));\n  const current_rank = found\n    ? found.position\n    : 'not found in top 10';\n  return { json: { current_rank }};\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        352
+      ],
+      "id": "4c04b868-8f2a-49d5-a47e-0cce91a77e04",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Today's date id {{ $now }}\n\nHere is the current ranking of this keyword: {{ $json.current_rank }} for Keyword: {{ $('When Executed by Another Workflow').item.json.keyword }}\n\n1. Use the Google Sheets tool to look up the previous rank for this keyword in my \"Rank Tracker\" sheet.\n2. Compare the previous rank to the current rank and compose a one-sentence summary of the change (e.g. \"Keyword X moved from position 8 to 6, rising 2 places\" or \"dropped by 3 places\").\n3. Update the same row in the \"Rank Tracker\" sheet, setting the \"Last Rank\" column to {{ $json.current_rank }} so future runs use this as the prior value and also update the Url row with {{ $('When Executed by Another Workflow').item.json.url }}\n4. Return only your summary sentence as the node's output.\n5. The \"Date of Last Rank\" column should be formatted as DD-MM-YYYY",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        1008,
+        352
+      ],
+      "id": "36b29bb0-34de-47cd-919f-fccf9ce1e986",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o",
+          "mode": "list",
+          "cachedResultName": "gpt-4o"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        944,
+        576
+      ],
+      "id": "5c789b97-95ab-40cc-857e-0857a1ae298c",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "4Ima9zI6S5bgR0J9",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1F3u9lvj5EsQ6DzhJausKj47waD_LDxNL82eDP4S3SEU",
+          "mode": "list",
+          "cachedResultName": "Keyword Ranking",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1F3u9lvj5EsQ6DzhJausKj47waD_LDxNL82eDP4S3SEU/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Rank Tracker",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1F3u9lvj5EsQ6DzhJausKj47waD_LDxNL82eDP4S3SEU/edit#gid=0"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Keyword",
+              "lookupValue": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('values0_Value', ``, 'string') }}"
+            },
+            {
+              "lookupColumn": "Url",
+              "lookupValue": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('values1_Value', ``, 'string') }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        1072,
+        576
+      ],
+      "id": "36aa2455-9f17-42ed-a261-092144ce2b36",
+      "name": "Get row(s) in sheet in Google Sheets",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOrFgSON7z5pDaoh",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "1F3u9lvj5EsQ6DzhJausKj47waD_LDxNL82eDP4S3SEU",
+          "mode": "list",
+          "cachedResultName": "Keyword Ranking",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1F3u9lvj5EsQ6DzhJausKj47waD_LDxNL82eDP4S3SEU/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Rank Tracker",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1F3u9lvj5EsQ6DzhJausKj47waD_LDxNL82eDP4S3SEU/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Last Rank": "={{ $json.current_rank }}",
+            "Date of Last Rank": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Date_of_Last_Rank', ``, 'string') }}",
+            "Keyword": "={{ $('HTTP Request').item.json.search_parameters.q }}",
+            "Url": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Url', ``, 'string') }}"
+          },
+          "matchingColumns": [
+            "Keyword"
+          ],
+          "schema": [
+            {
+              "id": "Url",
+              "displayName": "Url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Keyword",
+              "displayName": "Keyword",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Last Rank",
+              "displayName": "Last Rank",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Date of Last Rank",
+              "displayName": "Date of Last Rank",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        1200,
+        576
+      ],
+      "id": "01e27284-b6ca-4530-bc64-6e80299979ea",
+      "name": "Append or update row in sheet in Google Sheets",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOrFgSON7z5pDaoh",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet in Google Sheets": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append or update row in sheet in Google Sheets": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "cc3c4840-8a48-4e9d-9dfa-46c992ec879e",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "8a8866a57c012512213aa4b5cdc8a13651cd792f288db0991149de20d6a9753c"
+  },
+  "id": "S2e90VZXpafCsP8G",
+  "tags": [
+    {
+      "name": "SEO AGENCY",
+      "id": "cI4gPcjTwACwC4CJ",
+      "createdAt": "2025-10-14T09:10:35.444Z",
+      "updatedAt": "2025-10-14T09:10:35.444Z"
+    }
+  ]
+}
