@@ -1,0 +1,1371 @@
+{
+  "name": "Coaching Business Automation",
+  "nodes": [
+    {
+      "parameters": {
+        "formId": "eBcpy8G7"
+      },
+      "type": "n8n-nodes-base.typeformTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -672,
+        256
+      ],
+      "id": "76895507-bdc9-4b7b-b848-8e975e8aa13a",
+      "name": "Typeform Trigger",
+      "webhookId": "4bc4af83-1693-4c35-82f4-1ec90cae031c",
+      "credentials": {
+        "typeformApi": {
+          "id": "JfggGQgY4ISgDHgu",
+          "name": "Typeform account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Scoring Logic\nlet score = 0;\n\n// Get the data object\nconst data = $input.item.json;\n\n// Budget scoring (40 points max)\nconst budget = data[\"What is your coaching budget range?\"];\nif (budget === '$10K+') score += 40;\nelse if (budget === '$5-10K') score += 30;\nelse if (budget === '$2-5K') score += 15;\nelse score += 5;\n\n// Title scoring (25 points max)\nconst title = (data[\"What is your job title?\"] || '').toLowerCase();\nif (title.includes('ceo') || title.includes('founder') || \n    title.includes('president')) score += 25;\nelse if (title.includes('vp') || title.includes('vice president') ||\n         title.includes('director')) score += 20;\nelse if (title.includes('manager') || title.includes('head of')) score += 10;\nelse score += 3;\n\n// Timeline scoring (20 points max)\nconst timeline = data[\"When would you like to start?\"];\nif (timeline === 'ASAP') score += 20;\nelse if (timeline === '1-2 months') score += 15;\nelse if (timeline === '3+ months') score += 8;\nelse score += 3;\n\n// Company size scoring (15 points max)\nconst companySize = data[\"What is your company size?\"];\nconst size = parseInt(companySize);\nif (size >= 500) score += 15;\nelse if (size >= 100) score += 12;\nelse if (size >= 50) score += 8;\nelse score += 4;\n\nreturn {\n  ...data,\n  lead_score: score\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -448,
+        256
+      ],
+      "id": "663156ce-202e-4916-9848-0eb49f5df4ed",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.lead_score }}",
+                    "rightValue": 70,
+                    "operator": {
+                      "type": "number",
+                      "operation": "gte"
+                    },
+                    "id": "c2c74840-47d8-479c-8226-b95849ccc89b"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Hot Lead"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "ed53b8b2-1f87-4e32-8207-34018236e014",
+                    "leftValue": "={{ $json.lead_score }}",
+                    "rightValue": 40,
+                    "operator": {
+                      "type": "number",
+                      "operation": "gte"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Warm Lead"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "011f1973-c09f-44a8-a4bb-3c6a26ad4446",
+                    "leftValue": "={{ $json.lead_score }}",
+                    "rightValue": 40,
+                    "operator": {
+                      "type": "number",
+                      "operation": "lt"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Cold Lead"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        -224,
+        240
+      ],
+      "id": "56212356-f39a-44f0-9244-f103a585734a",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "25b1a102-0d3b-42c9-8b5e-214de0792dea",
+              "name": "Tags",
+              "value": "Hot Lead",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        0,
+        64
+      ],
+      "id": "289e4724-7ddd-4900-9059-b8362db70525",
+      "name": "Hot Lead"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "9a1ee9d5-676a-4128-b05c-ab631b0ae9af",
+              "name": "Tags",
+              "value": "Warm Lead",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        0,
+        256
+      ],
+      "id": "762669cb-b960-4648-a614-45a8114e9b66",
+      "name": "Warm Lead"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "173e7940-a265-452f-8da6-820077b8e433",
+              "name": "Tags",
+              "value": "Nurture",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        0,
+        448
+      ],
+      "id": "4216adac-15f5-48e4-81c8-b4e5473c3809",
+      "name": "Nurture lead"
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "app1DHT7BsY4aQxM7",
+          "mode": "list",
+          "cachedResultName": "Momentum Coaching CRM",
+          "cachedResultUrl": "https://airtable.com/app1DHT7BsY4aQxM7"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblTX5xiD3vPWAh1S",
+          "mode": "list",
+          "cachedResultName": "Leads & Clients",
+          "cachedResultUrl": "https://airtable.com/app1DHT7BsY4aQxM7/tblTX5xiD3vPWAh1S"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Name": "={{ $('Code in JavaScript').item.json['What\\'s your full name?'] }}",
+            "Email": "={{ $('Code in JavaScript').item.json['What\\'s your email address?'] }}",
+            "Phone": "={{ $('Code in JavaScript').item.json['What is your phone number?'] }}",
+            "Company": "={{ $('Code in JavaScript').item.json['What is your company name?'] }}",
+            "Title": "={{ $('Code in JavaScript').item.json['What is your job title?'] }}",
+            "Company Size": "={{ $('Code in JavaScript').item.json['What is your company size?'] }}",
+            "Budget Range": "={{ $('Code in JavaScript').item.json['What is your coaching budget range?'] }}",
+            "Timeline": "={{ $('Code in JavaScript').item.json['When would you like to start?'] }}",
+            "Lead Score": "={{ $('Code in JavaScript').item.json.lead_score }}",
+            "Challenge": "={{ $('Code in JavaScript').item.json['What is your current leadership challenge?'] }}",
+            "Goal": "={{ $('Code in JavaScript').item.json['What\\'s your biggest goal for coaching?'] }}",
+            "Lead Source": "={{ $('Code in JavaScript').item.json['How did you hear about us?'] }}",
+            "Tags": "={{ [$json.Tags] }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Phone",
+              "displayName": "Phone",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Company",
+              "displayName": "Company",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Title",
+              "displayName": "Title",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Company Size",
+              "displayName": "Company Size",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Budget Range",
+              "displayName": "Budget Range",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "<$2K",
+                  "value": "<$2K"
+                },
+                {
+                  "name": "$2-5K",
+                  "value": "$2-5K"
+                },
+                {
+                  "name": "$5-10K",
+                  "value": "$5-10K"
+                },
+                {
+                  "name": "$10K+",
+                  "value": "$10K+"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Timeline",
+              "displayName": "Timeline",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "ASAP",
+                  "value": "ASAP"
+                },
+                {
+                  "name": "1-2 months",
+                  "value": "1-2 months"
+                },
+                {
+                  "name": "3+ months",
+                  "value": "3+ months"
+                },
+                {
+                  "name": "exploring",
+                  "value": "exploring"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Lead Score",
+              "displayName": "Lead Score",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "New",
+                  "value": "New"
+                },
+                {
+                  "name": "Contacted",
+                  "value": "Contacted"
+                },
+                {
+                  "name": "Call Scheduled",
+                  "value": "Call Scheduled"
+                },
+                {
+                  "name": "Proposal Sent",
+                  "value": "Proposal Sent"
+                },
+                {
+                  "name": "Client",
+                  "value": "Client"
+                },
+                {
+                  "name": "Closed Lost",
+                  "value": "Closed Lost"
+                },
+                {
+                  "name": "Intake Complete",
+                  "value": "Intake Complete"
+                }
+              ],
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Lead Source",
+              "displayName": "Lead Source",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Challenge",
+              "displayName": "Challenge",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Goal",
+              "displayName": "Goal",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Tags",
+              "displayName": "Tags",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "array",
+              "options": [
+                {
+                  "name": "Hot Lead",
+                  "value": "Hot Lead"
+                },
+                {
+                  "name": "Warm Lead",
+                  "value": "Warm Lead"
+                },
+                {
+                  "name": "Nurture",
+                  "value": "Nurture"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Drive Folder URL",
+              "displayName": "Drive Folder URL",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Created Date",
+              "displayName": "Created Date",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            },
+            {
+              "id": "Last Contact",
+              "displayName": "Last Contact",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Next Action",
+              "displayName": "Next Action",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Scheduled call date",
+              "displayName": "Scheduled call date",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Scheduled call time",
+              "displayName": "Scheduled call time",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Calendar event Id",
+              "displayName": "Calendar event Id",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Intake Responses",
+              "displayName": "Intake Responses",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Drive Folder ID",
+              "displayName": "Drive Folder ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Zoom Link",
+              "displayName": "Zoom Link",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Intake PDF URL",
+              "displayName": "Intake PDF URL",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        448,
+        160
+      ],
+      "id": "3948a3e3-6726-46cd-9b09-02ba1cc24a45",
+      "name": "Create Lead Record",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "S0lbd1f6bSNj7oPg",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "app1DHT7BsY4aQxM7",
+          "mode": "list",
+          "cachedResultName": "Momentum Coaching CRM",
+          "cachedResultUrl": "https://airtable.com/app1DHT7BsY4aQxM7"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblTX5xiD3vPWAh1S",
+          "mode": "list",
+          "cachedResultName": "Leads & Clients",
+          "cachedResultUrl": "https://airtable.com/app1DHT7BsY4aQxM7/tblTX5xiD3vPWAh1S"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Name": "={{ $('Code in JavaScript').item.json['What\\'s your full name?'] }}",
+            "Email": "={{ $('Code in JavaScript').item.json['What\\'s your email address?'] }}",
+            "Phone": "={{ $('Code in JavaScript').item.json['What is your phone number?'] }}",
+            "Company": "={{ $('Code in JavaScript').item.json['What is your company name?'] }}",
+            "Title": "={{ $('Code in JavaScript').item.json['What is your job title?'] }}",
+            "Company Size": "={{ $('Code in JavaScript').item.json['What is your company size?'] }}",
+            "Budget Range": "={{ $('Code in JavaScript').item.json['What is your coaching budget range?'] }}",
+            "Timeline": "={{ $('Code in JavaScript').item.json['When would you like to start?'] }}",
+            "Lead Score": "={{ $('Code in JavaScript').item.json.lead_score }}",
+            "Challenge": "={{ $('Code in JavaScript').item.json['What is your current leadership challenge?'] }}",
+            "Goal": "={{ $('Code in JavaScript').item.json['What\\'s your biggest goal for coaching?'] }}",
+            "Lead Source": "={{ $('Code in JavaScript').item.json['How did you hear about us?'] }}",
+            "Tags": "={{ [$json.Tags] }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Phone",
+              "displayName": "Phone",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Company",
+              "displayName": "Company",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Title",
+              "displayName": "Title",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Company Size",
+              "displayName": "Company Size",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Budget Range",
+              "displayName": "Budget Range",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "<$2K",
+                  "value": "<$2K"
+                },
+                {
+                  "name": "$2-5K",
+                  "value": "$2-5K"
+                },
+                {
+                  "name": "$5-10K",
+                  "value": "$5-10K"
+                },
+                {
+                  "name": "$10K+",
+                  "value": "$10K+"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Timeline",
+              "displayName": "Timeline",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "ASAP",
+                  "value": "ASAP"
+                },
+                {
+                  "name": "1-2 months",
+                  "value": "1-2 months"
+                },
+                {
+                  "name": "3+ months",
+                  "value": "3+ months"
+                },
+                {
+                  "name": "exploring",
+                  "value": "exploring"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Lead Score",
+              "displayName": "Lead Score",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "New",
+                  "value": "New"
+                },
+                {
+                  "name": "Contacted",
+                  "value": "Contacted"
+                },
+                {
+                  "name": "Call Scheduled",
+                  "value": "Call Scheduled"
+                },
+                {
+                  "name": "Proposal Sent",
+                  "value": "Proposal Sent"
+                },
+                {
+                  "name": "Client",
+                  "value": "Client"
+                },
+                {
+                  "name": "Closed Lost",
+                  "value": "Closed Lost"
+                }
+              ],
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Lead Source",
+              "displayName": "Lead Source",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Challenge",
+              "displayName": "Challenge",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Goal",
+              "displayName": "Goal",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Tags",
+              "displayName": "Tags",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "array",
+              "options": [
+                {
+                  "name": "Hot Lead",
+                  "value": "Hot Lead"
+                },
+                {
+                  "name": "Warm Lead",
+                  "value": "Warm Lead"
+                },
+                {
+                  "name": "Nurture",
+                  "value": "Nurture"
+                },
+                {
+                  "name": "VIP",
+                  "value": "VIP"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Drive Folder URL",
+              "displayName": "Drive Folder URL",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Created Date",
+              "displayName": "Created Date",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            },
+            {
+              "id": "Last Contact",
+              "displayName": "Last Contact",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Next Action",
+              "displayName": "Next Action",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        224,
+        448
+      ],
+      "id": "0e3fe729-3263-48ba-a7a7-3bf1fa8d8192",
+      "name": "Create a record2",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "S0lbd1f6bSNj7oPg",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Merge1').item.json.fields.Email }}",
+        "subject": "={{ $json.subject }}",
+        "message": "={{ $json.htmlMessage }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        2144,
+        160
+      ],
+      "id": "e223490f-e0a0-4a06-88b1-03fe448d2a86",
+      "name": "Send a message",
+      "webhookId": "88f7c486-c9d3-471c-9acb-9243348b74d0",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "9rv1VVYoKEHLyTFX",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.fields.Email }}",
+        "subject": "Resources for your leadership journey",
+        "emailType": "text",
+        "message": "=Hi {{ $json.fields.Name }},\n\nThanks for your interest in executive coaching! I'd love to learn more about your goals around {{ $json.fields.Goal }}.\n\nI'm including:\n- My coaching process overview\n- A free leadership assessment\n- My calendar link when you're ready to chat\n\n[CALENDLY LINK]\n\nMany of my clients started exactly where you are – let me know if you have questions.\n\nBest,\nNiffyJade",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        448,
+        448
+      ],
+      "id": "506695b7-8c88-4ad3-b869-131588553cf5",
+      "name": "Send a message2",
+      "webhookId": "88f7c486-c9d3-471c-9acb-9243348b74d0",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "9rv1VVYoKEHLyTFX",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "calendar": {
+          "__rl": true,
+          "value": "a5dad97da65225d62d5e8432504e29be8d2496a2cfd6243f3735e8d048797274@group.calendar.google.com",
+          "mode": "list",
+          "cachedResultName": "Todoist"
+        },
+        "returnAll": true,
+        "timeMin": "={{ $now.toISO() }}",
+        "timeMax": "={{ $now.plus({ days: 7 }).toISO() }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [
+        672,
+        80
+      ],
+      "id": "91905bf2-a95c-4f95-9152-ba11d6186c19",
+      "name": "Query Google Calendar",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "Vg8kmBK6aB6vy6CE",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get calendar events\nconst events = $input.all().map(item => ({\n  start: new Date(item.json.start.dateTime || item.json.start.date),\n  end: new Date(item.json.end.dateTime || item.json.end.date)\n})).sort((a, b) => a.start - b.start);\n\n// Define business hours (9 AM - 5 PM EST)\nconst businessStart = 9; // 9 AM\nconst businessEnd = 17; // 5 PM\nconst slotDuration = 30; // minutes\n\n// Generate next 7 days\nconst today = new Date();\nconst availableSlots = [];\n\nfor (let i = 0; i < 7; i++) {\n  const date = new Date(today);\n  date.setDate(today.getDate() + i);\n  \n  // Skip weekends\n  if (date.getDay() === 0 || date.getDay() === 6) continue;\n  \n  // Check each 30-min slot in business hours\n  for (let hour = businessStart; hour < businessEnd; hour++) {\n    for (let minute of [0, 30]) {\n      const slotStart = new Date(date);\n      slotStart.setHours(hour, minute, 0, 0);\n      \n      const slotEnd = new Date(slotStart);\n      slotEnd.setMinutes(slotEnd.getMinutes() + slotDuration);\n      \n      // Skip if slot end is beyond business hours\n      if (slotEnd.getHours() >= businessEnd) continue;\n      \n      // Check if slot conflicts with any event\n      const hasConflict = events.some(event => \n        (slotStart < event.end && slotEnd > event.start)\n      );\n      \n      if (!hasConflict) {\n        availableSlots.push({\n          start: slotStart,\n          end: slotEnd,\n          formatted: slotStart.toLocaleString('en-US', {\n            weekday: 'long',\n            month: 'short',\n            day: 'numeric',\n            hour: 'numeric',\n            minute: '2-digit',\n            timeZone: 'America/New_York'\n          })\n        });\n      }\n      \n      // Stop if we have 6 slots\n      if (availableSlots.length >= 6) break;\n    }\n    if (availableSlots.length >= 6) break;\n  }\n  if (availableSlots.length >= 6) break;\n}\n\nreturn availableSlots.slice(0, 6).map(slot => ({ json: slot }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        896,
+        80
+      ],
+      "id": "488caaac-5bff-40b8-beb8-ccff77901269",
+      "name": "Find 30 min gap"
+    },
+    {
+      "parameters": {
+        "jsCode": "const slots = $input.all();\n\nif (slots.length === 0) {\n  return [{\n    json: {\n      email_text: \"Unfortunately, I don't have any available slots in the next 7 days. Please let me know your availability and I'll do my best to accommodate.\"\n    }\n  }];\n}\n\nconst slotList = slots.map((slot, index) => \n  `${index + 1}. ${slot.json.formatted}`\n).join('\\n');\n\nconst emailText = `Here are my available times for a 30-minute call:\n\n${slotList}\n\nPlease reply with your preferred time, and I'll send a calendar invite.\n\nLooking forward to speaking with you!\n\nBest,\nNiffyJade`;\n\nreturn [{ json: { email_text: emailText, available_slots: slots.length } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        80
+      ],
+      "id": "c17f502e-b141-46f1-81a1-3fe10e744732",
+      "name": "Format into email text"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1344,
+        160
+      ],
+      "id": "f694ab3c-2199-4c31-bf27-4908979345ab",
+      "name": "Merge1"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2,
+      "position": [
+        224,
+        160
+      ],
+      "id": "33e92eed-0d33-44b3-b862-b6c40cca3392",
+      "name": "Merge Leads"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Lead Name: {{ $json.fields.Name }}|Lead Tag: {{ $json.fields.Tags[0] }}Goal: {{ $json.fields.Goal }}Challenge: {{ $json.fields.Challenge }}Company: {{ $json.fields.Company }}Title: {{ $json.fields.Title }}Available Slots Context: {{ $json.email_text }}Instructions:1. Draft a subject line and an email body.2. If the tag is 'Hot Lead', use an urgent, direct, and high-priority tone. Emphasize immediate value and booking a call now.3. If the tag is 'Warm Lead', use a friendly, educational, and nurturing tone. Offer value and suggest a call.4. Incorporate the 'Available Slots Context' naturally.5. Return the result as a JSON object with keys: 'subject' and 'message'.",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "You are an executive assistant for a high-end coaching business. Your task is to draft a personalized email to a lead based on their details."
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        1568,
+        160
+      ],
+      "id": "bc446db4-7bed-44bd-b074-871014c11b4b",
+      "name": "Basic LLM Chain"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatCohere",
+      "typeVersion": 1,
+      "position": [
+        1648,
+        384
+      ],
+      "id": "77cab6df-091b-4031-bf5b-ee812cf4c7f8",
+      "name": "Cohere Chat Model",
+      "credentials": {
+        "cohereApi": {
+          "id": "pan9C2CH6GETwIpH",
+          "name": "CohereApi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. Get the raw text from the AI output\nconst rawText = $input.item.json.text;\n\n// 2. Strip away the markdown formatting (```json and ```)\nconst cleanJsonString = rawText.replace(/```json/gi, '').replace(/```/gi, '').trim();\n\n// 3. Parse the clean string into a JSON object\nconst parsedData = JSON.parse(cleanJsonString);\n\n// 4. Convert plain text line breaks (\\n) into HTML line breaks (<br>)\n// Also, optionally format bold text (**) to HTML bold (<b>)\nlet htmlContent = parsedData.message\n    .replace(/\\n/g, '<br>')\n    .replace(/\\*\\*(.*?)\\*\\*/g, '<b>$1</b>');\n\n// 5. Build the HTML Email Template\nconst htmlEmail = `\n<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UTF-8\">\n  <style>\n    body { \n      font-family: 'Segoe UI', Helvetica, Arial, sans-serif; \n      background-color: #f4f7f6; \n      margin: 0; \n      padding: 40px 20px; \n    }\n    .email-container { \n      max-width: 600px; \n      margin: 0 auto; \n      background-color: #ffffff; \n      border-radius: 10px; \n      overflow: hidden; \n      box-shadow: 0 4px 15px rgba(0,0,0,0.05); \n    }\n    .email-header { \n      background-color: #0f172a; /* Dark professional blue/black */\n      color: #ffffff; \n      padding: 25px; \n      text-align: center; \n    }\n    .email-body { \n      padding: 30px; \n      font-size: 16px; \n      line-height: 1.6; \n      color: #333333; \n    }\n    .email-footer { \n      background-color: #f8fafc; \n      padding: 20px; \n      text-align: center; \n      font-size: 13px; \n      color: #64748b; \n      border-top: 1px solid #e2e8f0; \n    }\n  </style>\n</head>\n<body>\n  <div class=\"email-container\">\n    <div class=\"email-header\">\n      <h2 style=\"margin: 0; font-weight: 500; letter-spacing: 1px;\">Nifemi AI Agency</h2>\n    </div>\n    <div class=\"email-body\">\n      ${htmlContent}\n    </div>\n    <div class=\"email-footer\">\n      <p style=\"margin: 0;\">&copy; 2026 Nifemi AI Agency. All rights reserved.</p>\n    </div>\n  </div>\n</body>\n</html>\n`;\n\n// 6. Return the subject and the new HTML email\nreturn {\n  subject: parsedData.subject,\n  htmlMessage: htmlEmail,\n  plainTextMessage: parsedData.message // Keeping the plain one just in case!\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1920,
+        160
+      ],
+      "id": "476f5a8d-5770-42ce-bbbe-932c613d940d",
+      "name": "Format the message"
+    }
+  ],
+  "pinData": {
+    "Typeform Trigger": [
+      {
+        "json": {
+          "What's your full name?": "Adetola Adefisayo",
+          "What's your email address?": "oluwanifemiadefisayo@gmail.com",
+          "What is your phone number?": "+2348108369009",
+          "What is your company name?": "Nifemi Ai Agency",
+          "What is your company size?": "200",
+          "What is your job title?": "Head of IT",
+          "What is your current leadership challenge?": "Employee Management",
+          "What is your coaching budget range?": "<$2K",
+          "When would you like to start?": "1-2 months",
+          "How did you hear about us?": "Linkedin",
+          "What's your biggest goal for coaching?": "to be a better HR"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ],
+    "Basic LLM Chain": [
+      {
+        "json": {
+          "text": "```json\n{\n  \"subject\": \"Elevate Your HR Leadership: Let’s Tackle Employee Management Together\",\n  \"message\": \"Hi Adetola,\\n\\nI hope this message finds you well! I’m reaching out because I understand the unique challenges that come with leading HR, especially when it comes to employee management. As the Head of IT at Nifemi Ai Agency, your role is pivotal in shaping the culture and productivity of your team.\\n\\nMany HR leaders I’ve worked with have faced similar challenges, and I’ve seen firsthand how small shifts in approach can lead to significant improvements in team dynamics and overall performance.\\n\\nI’d love to share some insights and strategies tailored to your situation during a 30-minute call. Here are a few available slots that might work for you:\\n\\n1. **Wednesday, Feb 25, 4:00 AM**\\n2. **Wednesday, Feb 25, 4:30 AM**\\n3. **Wednesday, Feb 25, 5:00 AM**\\n4. **Wednesday, Feb 25, 5:30 AM**\\n5. **Wednesday, Feb 25, 6:00 AM**\\n6. **Wednesday, Feb 25, 6:30 AM**\\n\\nPlease let me know which time works best for you, and I’ll send over a calendar invite. Looking forward to the opportunity to connect and explore how we can make a meaningful impact together.\\n\\nBest regards,\\nNiffyJade\"\n}\n```"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Typeform Trigger": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Hot Lead",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Warm Lead",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Nurture lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hot Lead": {
+      "main": [
+        [
+          {
+            "node": "Merge Leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Warm Lead": {
+      "main": [
+        [
+          {
+            "node": "Merge Leads",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Leads": {
+      "main": [
+        [
+          {
+            "node": "Create Lead Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Lead Record": {
+      "main": [
+        [
+          {
+            "node": "Query Google Calendar",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Query Google Calendar": {
+      "main": [
+        [
+          {
+            "node": "Find 30 min gap",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find 30 min gap": {
+      "main": [
+        [
+          {
+            "node": "Format into email text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format into email text": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge1": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Nurture lead": {
+      "main": [
+        [
+          {
+            "node": "Create a record2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a record2": {
+      "main": [
+        [
+          {
+            "node": "Send a message2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cohere Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "Format the message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format the message": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "abac51c6-2f37-4b94-be70-59557a121dc4",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "8844a39d1e598f34f99619697ad4222bfb69d7001fcc9b2949e0ee61d46cd2a5"
+  },
+  "id": "yvpXvSrqMmq51GPH",
+  "tags": []
+}
