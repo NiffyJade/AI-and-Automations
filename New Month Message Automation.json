@@ -1,0 +1,245 @@
+{
+  "name": "MailFlow Delivery Engine",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "mailflow-webhook",
+        "responseMode": "onReceived",
+        "responseData": "allEntries",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "e98e4d3f-5614-419b-ab84-46acbd72fc22",
+      "name": "Webhook (MailFlow Trigger)",
+      "webhookId": "918237b1-4c3e-8e2b-1111-cde987654321"
+    },
+    {
+      "parameters": {
+        "jsCode": "const campaignId = $input.item.json.body.campaignId;\nconst subjectTemplate = $input.item.json.body.subject;\nconst htmlTemplate = $input.item.json.body.htmlBody;\nconst fromName = $input.item.json.body.fromName;\nconst fromEmail = $input.item.json.body.fromEmail;\nconst callbackUrl = $input.item.json.body.callbackUrl;\nconst recipients = $input.item.json.body.recipients || [];\n\nreturn recipients.map(recipient => {\n  let personalizedSubject = subjectTemplate || '';\n  let personalizedHtml = htmlTemplate || '';\n  \n  // Replace tokens\n  for (const [key, value] of Object.entries(recipient)) {\n    const regex = new RegExp(`{{${key}}}`, 'g');\n    personalizedSubject = personalizedSubject.replace(regex, value || '');\n    personalizedHtml = personalizedHtml.replace(regex, value || '');\n  }\n\n  return {\n    json: {\n      campaignId,\n      callbackUrl,\n      email: recipient.email,\n      subject: personalizedSubject,\n      body: personalizedHtml,\n      fromName,\n      fromEmail\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        0
+      ],
+      "id": "14ae4b83-8321-4f9e-bbb8-112233445566",
+      "name": "Personalize & Map Recipients"
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {
+          "reset": false
+        }
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        440,
+        0
+      ],
+      "id": "f85cf9ed-0099-1111-2222-aaabbbcccddd",
+      "name": "Process One by One"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.email }}",
+        "subject": "={{ $json.subject }}",
+        "message": "={{ $json.body }}",
+        "options": {
+          "appendAttribution": false,
+          "senderName": "={{ $json.fromName || 'MailFlow' }}"
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        660,
+        -60
+      ],
+      "id": "8bcc0250-076a-41b1-a825-847e94995638",
+      "name": "Send Gmail",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "9rv1VVYoKEHLyTFX",
+          "name": "Gmail account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "amount": 2
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        860,
+        -60
+      ],
+      "id": "374bb1b5-14ff-4fdf-9a36-78d24ce9add0",
+      "name": "Wait (Rate Limit Protection)"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Process One by One').item.json.callbackUrl }}",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "campaignId",
+              "value": "={{ $('Process One by One').item.json.campaignId }}"
+            },
+            {
+              "name": "results",
+              "value": "={{ [ { email: $('Process One by One').item.json.email, status: $('Send Gmail').item.json.error ? 'failed' : 'sent' } ] }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1060,
+        -60
+      ],
+      "id": "eab949cc-8ddd-4fe2-b918-0f0985a9756b",
+      "name": "MailFlow Callback"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Process One by One').item.json.callbackUrl }}",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "campaignId",
+              "value": "={{ $('Process One by One').item.json.campaignId }}"
+            },
+            {
+              "name": "results",
+              "value": "={{ [ { email: $('Process One by One').item.json.email, status: 'failed' } ] }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        860,
+        140
+      ],
+      "id": "failed-callback-node",
+      "name": "MailFlow Error Callback"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook (MailFlow Trigger)": {
+      "main": [
+        [
+          {
+            "node": "Personalize & Map Recipients",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Personalize & Map Recipients": {
+      "main": [
+        [
+          {
+            "node": "Process One by One",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process One by One": {
+      "main": [
+        [
+          {
+            "node": "Send Gmail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Gmail": {
+      "main": [
+        [
+          {
+            "node": "Wait (Rate Limit Protection)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "MailFlow Error Callback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait (Rate Limit Protection)": {
+      "main": [
+        [
+          {
+            "node": "MailFlow Callback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MailFlow Callback": {
+      "main": [
+        [
+          {
+            "node": "Process One by One",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MailFlow Error Callback": {
+      "main": [
+        [
+          {
+            "node": "Process One by One",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "mailflow-delivery-engine-v1",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": []
+}

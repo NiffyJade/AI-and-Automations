@@ -1,0 +1,370 @@
+{
+  "name": "Volunteer_Timecard_Automation",
+  "nodes": [
+    {
+      "parameters": {
+        "jsCode": "// Get all items from the Salesforce query\nconst items = $input.all();\n\nconsole.log('Raw items from input:', JSON.stringify(items, null, 2));\n\n// Check if we actually have data\n// Salesforce node returns empty array when no results, OR returns items with no records\nlet hasData = false;\nlet recordCount = 0;\n\nif (items && items.length > 0) {\n  // Check if the items have actual Salesforce data\n  // Look for typical Salesforce fields like Id, or your custom fields\n  const firstItem = items[0].json;\n  \n  // If the first item has an Id field (Salesforce records always have Id)\n  // or has your date field, then we have real data\n  if (firstItem && (firstItem.Id || firstItem.Date__c)) {\n    hasData = true;\n    recordCount = items.length;\n  }\n}\n\nconsole.log('Has data:', hasData);\nconsole.log('Record count:', recordCount);\n\n// If no data, return a single item with hasData: false\nif (!hasData) {\n  return [{\n    json: {\n      hasData: false,\n      recordCount: 0,\n      message: 'No timesheet records found for the date range'\n    }\n  }];\n}\n\n// If we have data, pass it through with metadata\nreturn items.map(item => ({\n  json: {\n    hasData: true,\n    recordCount: recordCount,\n    // Keep ALL the original Salesforce data\n    ...item.json\n  }\n}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -16,
+        528
+      ],
+      "id": "69765222-103c-4f68-9a4a-828ca4149ce1",
+      "name": "Check Data Exists",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 8 * * 1"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -912,
+        528
+      ],
+      "id": "e2c1b2c7-85e6-493b-9fc7-42f5700ad421",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get current date\nconst now = new Date();\nconst dayOfWeek = now.getDay(); // 0=Sunday, 1=Monday, etc.\n\n// Calculate days to subtract to get to previous Monday\n// If today is Sunday (0), go back 6 days\n// If today is Monday (1), go back 7 days to previous Monday\n// If today is Tuesday (2), go back 8 days, etc.\nconst daysToSubtract = dayOfWeek === 0 ? 6 : dayOfWeek + 6;\n\n// Calculate previous Monday (start of reporting week)\nconst previousMonday = new Date(now);\npreviousMonday.setDate(now.getDate() - daysToSubtract);\npreviousMonday.setHours(0, 0, 0, 0);\n\n// Calculate previous Sunday (end of reporting week)\nconst previousSunday = new Date(previousMonday);\npreviousSunday.setDate(previousMonday.getDate() + 6);\npreviousSunday.setHours(23, 59, 59, 999);\n\n// Format for Salesforce (YYYY-MM-DD)\nfunction formatDate(date) {\n  const year = date.getFullYear();\n  const month = String(date.getMonth() + 1).padStart(2, '0');\n  const day = String(date.getDate()).padStart(2, '0');\n  return `${year}-${month}-${day}`;\n}\n\n// Format for display (e.g., \"Week of Jan 6-12, 2025\")\nfunction formatDisplayDate(date) {\n  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', \n                  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];\n  return `${months[date.getMonth()]} ${date.getDate()}`;\n}\n\n// Return the calculated dates\nreturn {\n  startDate: formatDate(previousMonday),\n  endDate: formatDate(previousSunday),\n  weekLabel: `Week of ${formatDisplayDate(previousMonday)} - ${formatDisplayDate(previousSunday)}, ${previousMonday.getFullYear()}`,\n  debug: {\n    today: formatDate(now),\n    dayOfWeek: dayOfWeek,\n    daysSubtracted: daysToSubtract\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -688,
+        528
+      ],
+      "id": "6f926e78-461c-4010-8a9f-3f7c130f74ee",
+      "name": "Calculate Date Range"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get the calculated dates from previous node\nconst startDate = $node[\"Calculate Date Range\"].json.startDate;\nconst endDate = $node[\"Calculate Date Range\"].json.endDate;\n\n// CUSTOMIZE THESE NAMES TO MATCH YOUR SALESFORCE OBJECT/FIELDS\nconst objectName = 'Time_Sheet__c';\nconst volunteerField = 'Name';\nconst emailField = 'User_Email__c';\nconst dateField = 'Date__c';\nconst hoursField = 'Duration_Hours__c';\nconst programField = 'Departments__c';\nconst notesField = 'Summary__c';\n\n// Build the SOQL query dynamically\nconst query = `SELECT Id, ${volunteerField}, ${emailField}, ${dateField}, ${hoursField}, ${programField}, ${notesField} FROM ${objectName} WHERE ${dateField} >= ${startDate} AND ${dateField} <= ${endDate} ORDER BY ${dateField} ASC, ${emailField} ASC`;\n\nconsole.log('Generated SOQL Query:', query);\n\nreturn {\n  query: query,\n  startDate: startDate,\n  endDate: endDate\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -464,
+        528
+      ],
+      "id": "50ce0de7-0b2f-4a5f-8dbc-e471872c3a8c",
+      "name": "Build SOQL Query"
+    },
+    {
+      "parameters": {
+        "resource": "search",
+        "query": "={{ $json.query }}"
+      },
+      "type": "n8n-nodes-base.salesforce",
+      "typeVersion": 1,
+      "position": [
+        -224,
+        528
+      ],
+      "id": "05531338-7c28-44d2-a890-2c893ac8507c",
+      "name": "Query Timesheets",
+      "alwaysOutputData": true,
+      "credentials": {
+        "salesforceOAuth2Api": {
+          "id": "t99xhF3oOI4FliCW",
+          "name": "Salesforce account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "1e4b33f2-ea8e-4445-b240-51aa0b082c48",
+              "leftValue": "={{$json.hasData}}",
+              "rightValue": "true",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        208,
+        528
+      ],
+      "id": "2f519d48-7d2b-4a01-bddd-baefa071beb2",
+      "name": "Route Based on Data"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get all items from Salesforce query\nconst records = $input.all().map(item => item.json);\n\nconsole.log('Processing records:', records.length);\n\n// Initialize data structures\nconst overall = {\n  totalHours: 0,\n  uniqueVolunteers: new Set(),\n  recordCount: records.length\n};\n\nconst byProgram = {};\nconst byVolunteer = {};\n\n// Helper function to extract volunteer name from the Name field\nfunction extractVolunteerName(fullName) {\n  if (!fullName) return 'Unknown Volunteer';\n  const parts = fullName.split(' - ');\n  return parts[0].trim();\n}\n\n// Process each timesheet record\nrecords.forEach(record => {\n  const volunteerId = record.User_Email__c || 'no-email@unknown.com';\n  const volunteerName = extractVolunteerName(record.Name);\n  const volunteerEmail = record.User_Email__c || 'No Email';\n  const hours = parseFloat(record.Duration_Hours__c || 0);\n  \n  // Read Departments__c directly (text/picklist field)\n  let program = record.Departments__c || 'No Department';\n  \n  const date = record.Date__c;\n  const notes = record.Summary__c || '';\n  \n  // Overall totals\n  overall.totalHours += hours;\n  overall.uniqueVolunteers.add(volunteerId);\n  \n  // Group by program\n  if (!byProgram[program]) {\n    byProgram[program] = {\n      totalHours: 0,\n      volunteers: new Set(),\n      entries: []\n    };\n  }\n  byProgram[program].totalHours += hours;\n  byProgram[program].volunteers.add(volunteerId);\n  byProgram[program].entries.push({\n    volunteer: volunteerName,\n    email: volunteerEmail,\n    hours: hours,\n    date: date\n  });\n  \n  // Group by volunteer (using email as key)\n  if (!byVolunteer[volunteerId]) {\n    byVolunteer[volunteerId] = {\n      name: volunteerName,\n      email: volunteerEmail,\n      totalHours: 0,\n      programs: new Set(),\n      entries: []\n    };\n  }\n  byVolunteer[volunteerId].totalHours += hours;\n  byVolunteer[volunteerId].programs.add(program);\n  byVolunteer[volunteerId].entries.push({\n    date: date,\n    hours: hours,\n    program: program,\n    notes: notes\n  });\n});\n\n// Convert Sets to numbers for final output\noverall.uniqueVolunteers = overall.uniqueVolunteers.size;\n\nObject.keys(byProgram).forEach(program => {\n  byProgram[program].volunteers = byProgram[program].volunteers.size;\n});\n\n// Calculate average hours per volunteer (2 decimal places)\noverall.avgHoursPerVolunteer = overall.uniqueVolunteers > 0 \n  ? (overall.totalHours / overall.uniqueVolunteers).toFixed(2)\n  : \"0.00\";\n\n// Get all volunteers sorted by hours\nconst allVolunteers = Object.values(byVolunteer)\n  .map(v => ({\n    name: v.name,\n    email: v.email,\n    hours: v.totalHours.toFixed(2),\n    programs: Array.from(v.programs).join(', ')\n  }))\n  .sort((a, b) => parseFloat(b.hours) - parseFloat(a.hours));\n\n// Group volunteers by hour ranges\nconst volunteersByRange = {\n  high: allVolunteers.filter(v => parseFloat(v.hours) >= 15),\n  medium_high: allVolunteers.filter(v => parseFloat(v.hours) >= 10 && parseFloat(v.hours) < 15),\n  medium: allVolunteers.filter(v => parseFloat(v.hours) >= 5 && parseFloat(v.hours) < 10),\n  low: allVolunteers.filter(v => parseFloat(v.hours) >= 2 && parseFloat(v.hours) < 5),\n  very_low: allVolunteers.filter(v => parseFloat(v.hours) < 2)\n};\n\n// Get week label from earlier node\nconst weekLabel = $node[\"Calculate Date Range\"].json.weekLabel;\n\nconsole.log('Aggregation complete. Total hours:', overall.totalHours.toFixed(2));\nconsole.log('Unique volunteers (by email):', overall.uniqueVolunteers);\n\n// Return all aggregated data\nreturn {\n  overall,\n  byProgram,\n  byVolunteer,\n  allVolunteers,\n  volunteersByRange,\n  weekLabel\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        432,
+        432
+      ],
+      "id": "e5125569-b1a7-43c3-a87e-0957fe30b0b2",
+      "name": "Aggregate Data"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.all()[0].json;\n\n// Check for required fields\nif (!data.overall || !data.byProgram || !data.allVolunteers) {\n  throw new Error('Aggregation failed: Missing required data structures');\n}\n\n// Validate total hours makes sense\nif (data.overall.totalHours < 0) {\n  throw new Error('Invalid data: Negative total hours');\n}\n\nif (data.overall.totalHours > 10000) {\n  console.warn('Warning: Very high total hours detected:', data.overall.totalHours);\n}\n\n// Clean up volunteer names (remove extra spaces, etc.)\ndata.allVolunteers = data.allVolunteers.map(v => ({\n  ...v,\n  name: v.name.trim().replace(/\\s+/g, ' ')\n}));\n\n// Programs/Departments come dynamically from Salesforce Departments__c field\n// No need for hardcoded expected programs\n\nreturn data;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        656,
+        432
+      ],
+      "id": "2ed4772b-5ba8-4332-accd-96c409cca4bf",
+      "name": "Validate and Clean Data"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ========================================\n// HELPER FUNCTIONS FOR CHARACTER LIMITS\n// ========================================\n\nfunction truncateText(text, maxLength = 2800, suffix = '\\n\\n_[Message truncated due to length]_') {\n  if (text.length <= maxLength) {\n    return text;\n  }\n  const truncateAt = text.lastIndexOf('\\n', maxLength - suffix.length);\n  const cutPoint = truncateAt > 0 ? truncateAt : maxLength - suffix.length;\n  return text.substring(0, cutPoint) + suffix;\n}\n\nfunction splitIntoChunks(text, maxLength = 2800) {\n  if (text.length <= maxLength) {\n    return [text];\n  }\n  const chunks = [];\n  let remainingText = text;\n  while (remainingText.length > 0) {\n    if (remainingText.length <= maxLength) {\n      chunks.push(remainingText);\n      break;\n    }\n    let breakPoint = remainingText.lastIndexOf('\\n', maxLength);\n    if (breakPoint === -1 || breakPoint < maxLength * 0.8) {\n      breakPoint = remainingText.lastIndexOf(' ', maxLength);\n    }\n    if (breakPoint === -1) {\n      breakPoint = maxLength;\n    }\n    chunks.push(remainingText.substring(0, breakPoint));\n    remainingText = remainingText.substring(breakPoint).trim();\n  }\n  return chunks;\n}\n\nfunction buildVolunteerList(volunteersByRange, maxChars = 2800) {\n  let text = \"*\\ud83d\\udc65 All Volunteer Hours* (sorted by hours, descending)\\n\\n\";\n  let currentLength = text.length;\n  let totalVolunteers = 0;\n  let shownVolunteers = 0;\n  const ranges = [\n    { key: 'high', label: '*15+ hours:*', showAll: true },\n    { key: 'medium_high', label: '*10-14.9 hours:*', showAll: true },\n    { key: 'medium', label: '*5-9.9 hours:*', limit: 15 },\n    { key: 'low', label: '*2-4.9 hours:*', limit: 10 },\n    { key: 'very_low', label: '*Under 2 hours:*', limit: 5 }\n  ];\n  ranges.forEach(range => {\n    totalVolunteers += (volunteersByRange[range.key] || []).length;\n  });\n  let truncated = false;\n  for (const range of ranges) {\n    const volunteers = volunteersByRange[range.key] || [];\n    if (volunteers.length === 0) continue;\n    const headerText = `${range.label}\\n`;\n    if (currentLength + headerText.length > maxChars - 200) {\n      truncated = true;\n      break;\n    }\n    text += headerText;\n    currentLength += headerText.length;\n    const showCount = range.showAll ? volunteers.length : Math.min(range.limit || 10, volunteers.length);\n    for (let i = 0; i < showCount; i++) {\n      const v = volunteers[i];\n      const line = `\\u2022 ${v.name} - ${v.hours} hrs (${v.programs})\\n`;\n      if (currentLength + line.length > maxChars - 200) {\n        truncated = true;\n        break;\n      }\n      text += line;\n      currentLength += line.length;\n      shownVolunteers++;\n    }\n    if (truncated) break;\n    if (!range.showAll && volunteers.length > showCount) {\n      const moreText = `\\u2022 ... [+${volunteers.length - showCount} more volunteers]\\n`;\n      text += moreText;\n      currentLength += moreText.length;\n      shownVolunteers += (volunteers.length - showCount);\n    }\n    text += \"\\n\";\n    currentLength += 1;\n  }\n  return {\n    text: text,\n    totalVolunteers: totalVolunteers,\n    shownVolunteers: shownVolunteers,\n    truncated: truncated\n  };\n}\n\nfunction buildVolunteerContinuation(volunteersByRange, skipCount) {\n  const continuationBlocks = [];\n  let currentBlock = \"\";\n  let skipped = 0;\n  let currentLength = 0;\n  const maxLength = 2800;\n  const ranges = [\n    { key: 'high', label: '*15+ hours (continued):*' },\n    { key: 'medium_high', label: '*10-14.9 hours (continued):*' },\n    { key: 'medium', label: '*5-9.9 hours (continued):*' },\n    { key: 'low', label: '*2-4.9 hours (continued):*' },\n    { key: 'very_low', label: '*Under 2 hours (continued):*' }\n  ];\n  for (const range of ranges) {\n    const volunteers = volunteersByRange[range.key] || [];\n    if (volunteers.length === 0) continue;\n    let rangeStarted = false;\n    for (let i = 0; i < volunteers.length; i++) {\n      if (skipped < skipCount) {\n        skipped++;\n        continue;\n      }\n      if (!rangeStarted) {\n        const headerText = `${range.label}\\n`;\n        if (currentLength + headerText.length > maxLength - 100) {\n          if (currentBlock.length > 0) {\n            continuationBlocks.push(currentBlock);\n          }\n          currentBlock = headerText;\n          currentLength = headerText.length;\n        } else {\n          currentBlock += headerText;\n          currentLength += headerText.length;\n        }\n        rangeStarted = true;\n      }\n      const v = volunteers[i];\n      const line = `\\u2022 ${v.name} - ${v.hours} hrs (${v.programs})\\n`;\n      if (currentLength + line.length > maxLength - 100) {\n        continuationBlocks.push(currentBlock);\n        currentBlock = line;\n        currentLength = line.length;\n      } else {\n        currentBlock += line;\n        currentLength += line.length;\n      }\n    }\n    if (rangeStarted) {\n      currentBlock += \"\\n\";\n      currentLength += 1;\n    }\n  }\n  if (currentBlock.length > 0) {\n    continuationBlocks.push(currentBlock);\n  }\n  return continuationBlocks;\n}\n\nfunction getCharCount(text) {\n  return (text || '').length;\n}\n\n// ========================================\n// START OF MAIN CODE\n// ========================================\n\nconst data = $input.all()[0].json;\n\n// Build volunteer list with smart truncation\nconst volunteerListResult = buildVolunteerList(data.volunteersByRange, 2800);\nconst volunteerListText = volunteerListResult.text;\n\nconsole.log('Volunteer list character count:', getCharCount(volunteerListText));\nconsole.log('Shown volunteers:', volunteerListResult.shownVolunteers, '/', volunteerListResult.totalVolunteers);\n\n// Build program summary with truncation\nlet programText = \"*\\ud83d\\udcc8 By Program*\\n\" + Object.keys(data.byProgram)\n  .filter(program => data.byProgram[program].totalHours > 0)\n  .map(program => {\n    const p = data.byProgram[program];\n    return `\\u2022 ${program}: ${p.totalHours.toFixed(2)} hrs (${p.volunteers} volunteers)`;\n  })\n  .join('\\n');\n\nprogramText = truncateText(programText, 1000);\nconsole.log('Program text character count:', getCharCount(programText));\n\n// Build Slack message blocks\nconst blocks = [\n  {\n    \"type\": \"header\",\n    \"text\": {\n      \"type\": \"plain_text\",\n      \"text\": \"\\ud83c\\udf1f Weekly Volunteer Impact Report\",\n      \"emoji\": true\n    }\n  },\n  {\n    \"type\": \"context\",\n    \"elements\": [\n      {\n        \"type\": \"mrkdwn\",\n        \"text\": truncateText(data.weekLabel, 75)\n      }\n    ]\n  },\n  {\n    \"type\": \"divider\"\n  },\n  {\n    \"type\": \"section\",\n    \"text\": {\n      \"type\": \"mrkdwn\",\n      \"text\": `*\\ud83d\\udcca Overview*\\n\\u2022 Total Hours: *${data.overall.totalHours.toFixed(2)}* hours\\n\\u2022 Active Volunteers: *${data.overall.uniqueVolunteers}* people\\n\\u2022 Average Hours/Volunteer: *${data.overall.avgHoursPerVolunteer}* hours\\n\\u2022 Timesheet Entries: ${data.overall.recordCount}`\n    }\n  },\n  {\n    \"type\": \"section\",\n    \"text\": {\n      \"type\": \"mrkdwn\",\n      \"text\": volunteerListText\n    }\n  }\n];\n\n// Add continuation blocks if volunteers were truncated\nif (volunteerListResult.truncated) {\n  console.log('Volunteers truncated, building continuation blocks...');\n  const continuationBlocks = buildVolunteerContinuation(\n    data.volunteersByRange, \n    volunteerListResult.shownVolunteers\n  );\n  console.log('Created', continuationBlocks.length, 'continuation blocks');\n  continuationBlocks.forEach((blockText, index) => {\n    blocks.push({\n      \"type\": \"section\",\n      \"text\": {\n        \"type\": \"mrkdwn\",\n        \"text\": blockText\n      }\n    });\n    console.log(`Continuation block ${index + 1} character count:`, getCharCount(blockText));\n  });\n}\n\n// Add program summary\nblocks.push({\n  \"type\": \"section\",\n  \"text\": {\n    \"type\": \"mrkdwn\",\n    \"text\": truncateText(programText, 2800)\n  }\n});\n\n// Add divider before footer\nblocks.push({\n  \"type\": \"divider\"\n});\n\n// Add footer\nblocks.push({\n  \"type\": \"section\",\n  \"text\": {\n    \"type\": \"mrkdwn\",\n    \"text\": `_\\ud83e\\uddea SANDBOX TEST - Report generated from test data_\\n_Generated: ${new Date().toLocaleString('en-US', { timeZone: 'America/New_York' })}_`\n  }\n});\n\n// Final safety check\nconsole.log('Total blocks before limit check:', blocks.length);\nif (blocks.length > 50) {\n  console.warn('WARNING: Exceeding 50 block limit! Truncating...');\n  blocks.splice(49);\n  blocks.push({\n    \"type\": \"section\",\n    \"text\": {\n      \"type\": \"mrkdwn\",\n      \"text\": \"\\u26a0\\ufe0f *Report truncated* - Message exceeded Slack's 50 block limit.\"\n    }\n  });\n}\n\nconsole.log('Final block count:', blocks.length);\n\nblocks.forEach((block, i) => {\n  if (block.type === 'section' && block.text) {\n    const charCount = getCharCount(block.text.text);\n    console.log(`Block ${i} (${block.type}): ${charCount} chars`);\n    if (charCount > 3000) {\n      console.error(`ERROR: Block ${i} exceeds 3000 character limit!`);\n    }\n  }\n  if (block.type === 'context' && block.elements) {\n    block.elements.forEach((el, j) => {\n      const charCount = getCharCount(el.text);\n      console.log(`Block ${i} context element ${j}: ${charCount} chars`);\n      if (charCount > 75) {\n        console.error(`ERROR: Context element ${j} in block ${i} exceeds 75 character limit!`);\n      }\n    });\n  }\n});\n\n// Return the formatted blocks\nreturn [{\n  json: {\n    blocksJson: JSON.stringify({ blocks: blocks }),\n    blocks: blocks,\n    text: \"Weekly Volunteer Impact Report\"\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        432
+      ],
+      "id": "3982ce30-27a8-4ad1-b47d-0d55aae78483",
+      "name": "Format Overall Summary"
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C0AEUNPMEE7",
+          "mode": "list",
+          "cachedResultName": "volunteer-ops-test"
+        },
+        "messageType": "block",
+        "blocksUi": "={{ $json.blocksJson }}",
+        "text": "=🌟 Weekly Volunteer Impact Report",
+        "otherOptions": {
+          "includeLinkToWorkflow": false,
+          "mrkdwn": true
+        }
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [
+        1104,
+        432
+      ],
+      "id": "532220ac-3e1b-40db-b63a-50edc3264c6f",
+      "name": "Post to #volunteer-ops-test",
+      "webhookId": "733c15f1-7548-41b6-99df-6d3b1f8ed236",
+      "credentials": {
+        "slackApi": {
+          "id": "vjQS2KEBme1UvgFr",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get the week label from the Calculate Date Range node\nconst weekLabel = $node[\"Calculate Date Range\"].json.weekLabel;\nconst startDate = $node[\"Calculate Date Range\"].json.startDate;\nconst endDate = $node[\"Calculate Date Range\"].json.endDate;\n\n// Create a formatted Slack message using Block Kit\nconst blocks = [\n  {\n    \"type\": \"header\",\n    \"text\": {\n      \"type\": \"plain_text\",\n      \"text\": \"\\u26a0\\ufe0f No Volunteer Data Found\",\n      \"emoji\": true\n    }\n  },\n  {\n    \"type\": \"section\",\n    \"text\": {\n      \"type\": \"mrkdwn\",\n      \"text\": `*${weekLabel}*\\n\\nNo volunteer timesheet entries were found for the reporting period.`\n    }\n  },\n  {\n    \"type\": \"section\",\n    \"fields\": [\n      {\n        \"type\": \"mrkdwn\",\n        \"text\": `*Start Date:*\\n${startDate}`\n      },\n      {\n        \"type\": \"mrkdwn\",\n        \"text\": `*End Date:*\\n${endDate}`\n      }\n    ]\n  },\n  {\n    \"type\": \"divider\"\n  },\n  {\n    \"type\": \"section\",\n    \"text\": {\n      \"type\": \"mrkdwn\",\n      \"text\": \"*Possible reasons:*\\n\\u2022 No volunteers logged hours this week\\n\\u2022 Timesheets haven't been submitted yet\\n\\u2022 Data sync issue with Salesforce\\n\\u2022 Date range calculation error\"\n    }\n  },\n  {\n    \"type\": \"context\",\n    \"elements\": [\n      {\n        \"type\": \"mrkdwn\",\n        \"text\": `\\ud83e\\udd16 Automated report \\u2022 ${new Date().toLocaleString('en-US', { timeZone: 'America/New_York' })}`\n      }\n    ]\n  }\n];\n\nreturn [{\n  json: {\n    blocksJson: JSON.stringify({ blocks: blocks }),\n    blocks: blocks,\n    text: \"\\u26a0\\ufe0f No Volunteer Data Found\",\n    weekLabel: weekLabel\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        416,
+        624
+      ],
+      "id": "d3ac13f3-a946-4161-bef5-f0e9835650b1",
+      "name": "Format the No-Data Message"
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C0AEUNPMEE7",
+          "mode": "list",
+          "cachedResultName": "volunteer-ops-test"
+        },
+        "messageType": "block",
+        "blocksUi": "={{ $json.blocksJson }}",
+        "text": "={{ $json.text }}",
+        "otherOptions": {
+          "includeLinkToWorkflow": false,
+          "mrkdwn": true
+        }
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [
+        624,
+        624
+      ],
+      "id": "3e0322fb-f48a-4037-850c-8c9c9b4270f8",
+      "name": "Send a message",
+      "webhookId": "d7cd5070-2b94-4042-99a9-029c8712534e",
+      "credentials": {
+        "slackApi": {
+          "id": "vjQS2KEBme1UvgFr",
+          "name": "Slack account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Check Data Exists": {
+      "main": [
+        [
+          {
+            "node": "Route Based on Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Calculate Date Range",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate Date Range": {
+      "main": [
+        [
+          {
+            "node": "Build SOQL Query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build SOQL Query": {
+      "main": [
+        [
+          {
+            "node": "Query Timesheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query Timesheets": {
+      "main": [
+        [
+          {
+            "node": "Check Data Exists",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Based on Data": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Data",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Format the No-Data Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Data": {
+      "main": [
+        [
+          {
+            "node": "Validate and Clean Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate and Clean Data": {
+      "main": [
+        [
+          {
+            "node": "Format Overall Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Overall Summary": {
+      "main": [
+        [
+          {
+            "node": "Post to #volunteer-ops-test",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format the No-Data Message": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "1a4e4494-d0dc-4ab0-a104-7f8b8932a651",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "8844a39d1e598f34f99619697ad4222bfb69d7001fcc9b2949e0ee61d46cd2a5"
+  },
+  "id": "-BtovMqitgQj5iDTwK1eH",
+  "tags": []
+}

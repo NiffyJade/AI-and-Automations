@@ -1,0 +1,351 @@
+{
+  "name": "Smart Lead Qualification & Reminder Engine for webinar",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "documentId": {
+          "__rl": true,
+          "value": "1UAECq83cYWYm61tULhBcW9quVFCLyYL1pbk3z4Fs17U",
+          "mode": "list",
+          "cachedResultName": "Contact Information (Responses)",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1UAECq83cYWYm61tULhBcW9quVFCLyYL1pbk3z4Fs17U/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 255956321,
+          "mode": "list",
+          "cachedResultName": "Form Responses 1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1UAECq83cYWYm61tULhBcW9quVFCLyYL1pbk3z4Fs17U/edit#gid=255956321"
+        },
+        "event": "rowAdded",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        -16
+      ],
+      "id": "0653e418-7d52-497e-a5ac-334f2882b202",
+      "name": "Google Sheets Trigger",
+      "credentials": {
+        "googleSheetsTriggerOAuth2Api": {
+          "id": "jWvr2Nsg6aYVvK1f",
+          "name": "Google Sheets Trigger account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\n\n// ── Pull directly from Google Sheets column names ─────────\nconst raw = input['Timestamp'];\nconst name = input['Name'];\nconst email = input['Email'];\nconst phone = input['Phone number'];\n\n// ── Validate required fields ──────────────────────────────\nif (!raw) throw new Error('Timestamp is missing from Google Sheets data');\nif (!name) throw new Error('Name is missing from Google Sheets data');\nif (!email) throw new Error('Email is missing from Google Sheets data');\n\n// ── Parse timestamp: \"3/6/2026 13:37:06\" → ISO 8601 ──────\nlet isoString;\n\nif (raw.includes('T')) {\n  isoString = raw; // already ISO, skip parsing\n} else {\n  const [datePart, timePart] = raw.trim().split(' ');\n  const [month, day, year]   = datePart.split('/');\n  const [hours, minutes, seconds] = timePart.split(':');\n\n  isoString = `${year}-${month.padStart(2,'0')}-${day.padStart(2,'0')}T${hours.padStart(2,'0')}:${minutes.padStart(2,'0')}:${(seconds || '00').padStart(2,'0')}`;\n}\n\nconst parsed = new Date(isoString);\n\nif (isNaN(parsed.getTime())) {\n  throw new Error(`Could not parse timestamp: \"${raw}\"`);\n}\n\n// ── Return clean normalized data ──────────────────────────\nreturn [{\n  json: {\n    name:          name,\n    email:         email,\n    phone:         phone,\n    registered_at: parsed.toISOString()\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        -16
+      ],
+      "id": "a54fbcaf-f65e-453b-a83f-cb1bb985d330",
+      "name": "Parse Registration Data"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\n\n// ── Set your webinar date and time here ───────────────────\n// Format: YYYY-MM-DDTHH:MM:SS  (24hr, your local time)\nconst WEBINAR_DATETIME = '2026-03-18T18:00:00';\n\n// ── Your timezone offset from UTC ─────────────────────────\n// Lagos/Nigeria = +01:00\nconst TIMEZONE_OFFSET = '+01:00';\n\nreturn [{\n  json: {\n    ...input,\n    webinar_datetime: `${WEBINAR_DATETIME}${TIMEZONE_OFFSET}`\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        -16
+      ],
+      "id": "e7cc9935-8f22-4f95-b6c3-aedc6b2101f6",
+      "name": "Webinar Config"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input        = $input.first().json;\nconst now          = new Date();\nconst webinarTime  = new Date(input.webinar_datetime);\nconst registeredAt = new Date(input.registered_at);\n\n// ── Safety check: webinar must be in the future ───────────\nif (isNaN(webinarTime.getTime())) {\n  throw new Error(`Invalid webinar_datetime: \"${input.webinar_datetime}\"`);\n}\n\nif (webinarTime <= now) {\n  // Webinar already passed — send nothing\n  return [];\n}\n\n// ── Build the 6AM same-day reminder time ─────────────────\nconst sameDaySixAM = new Date(webinarTime);\nsameDaySixAM.setHours(6, 0, 0, 0);\n\n// ── All possible reminders ────────────────────────────────\nconst allReminders = [\n  {\n    id:    '7day',\n    label: '7 Days Before',\n    time:  new Date(webinarTime.getTime() - 7 * 24 * 60 * 60 * 1000)\n  },\n  {\n    id:    '3day',\n    label: '3 Days Before',\n    time:  new Date(webinarTime.getTime() - 3 * 24 * 60 * 60 * 1000)\n  },\n  {\n    id:    'sameday_6am',\n    label: 'Day-Of 6AM',\n    time:  sameDaySixAM\n  },\n  {\n    id:    '1hour',\n    label: '1 Hour Before',\n    time:  new Date(webinarTime.getTime() - 1 * 60 * 60 * 1000)\n  }\n];\n\n// ── Filter: only keep reminders still in the future ───────\nconst validReminders = allReminders.filter(r => r.time > now);\n\nif (validReminders.length === 0) {\n  // Registered too late — no reminders apply\n  return [];\n}\n\n// ── Output one item per valid reminder ────────────────────\nreturn validReminders.map(r => ({\n  json: {\n    name:             input.name,\n    email:            input.email,\n    phone:            input.phone,\n    registered_at:    input.registered_at,\n    webinar_datetime: input.webinar_datetime,\n    reminder_id:      r.id,\n    reminder_label:   r.label,\n    send_at:          r.time.toISOString(),\n    hours_until_send: Math.round(((r.time - now) / (1000 * 60 * 60)) * 10) / 10\n  }\n}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        -16
+      ],
+      "id": "4f99d39f-2abc-457b-b5a8-029887cb9361",
+      "name": "Calculate Reminder Schedule"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input       = $input.first().json;\nconst webinarTime = new Date(input.webinar_datetime);\n\n// ── Format readable date and time ────────────────────────\nconst formattedDate = webinarTime.toLocaleDateString('en-NG', {\n  weekday: 'long',\n  year:    'numeric',\n  month:   'long',\n  day:     'numeric',\n  timeZone: 'Africa/Lagos'\n});\n\nconst formattedTime = webinarTime.toLocaleTimeString('en-NG', {\n  hour:     '2-digit',\n  minute:   '2-digit',\n  timeZone: 'Africa/Lagos',\n  timeZoneName: 'short'\n});\n\n// ── Webinar join link ─────────────────────────────────────\nconst JOIN_LINK = 'https://your-webinar-link.com'; // ← update this\n\n// ── Message templates per reminder type ──────────────────\nconst templates = {\n\n  '7day': {\n    subject: `📅 Your Webinar is in 7 Days, ${input.name}!`,\n    body: `Hi ${input.name},\n\nYou're registered for our upcoming webinar — and it's just 7 days away!\n\n📅 Date: ${formattedDate}\n🕐 Time: ${formattedTime}\n\nAdd it to your calendar now so you don't miss a thing. We'll be covering everything you need to know, live and in real time.\n\n👉 Join the Webinar: ${JOIN_LINK}\n\nSee you there!`\n  },\n\n  '3day': {\n    subject: `⏳ Only 3 Days Left — Get Ready, ${input.name}!`,\n    body: `Hi ${input.name},\n\nYour webinar is just 3 days away — it's almost time!\n\n📅 Date: ${formattedDate}\n🕐 Time: ${formattedTime}\n\nMake sure you've saved the link below and cleared your schedule. You won't want to miss this.\n\n👉 Join the Webinar: ${JOIN_LINK}\n\nWe'll see you there!`\n  },\n\n  'sameday_6am': {\n    subject: `🌅 Today's the Day, ${input.name}! Webinar Tonight`,\n    body: `Good morning ${input.name}!\n\nYour webinar is happening TODAY at ${formattedTime}.\n\nClear your schedule, grab a notebook, and come ready to engage. Rooms open 10 minutes before the session starts.\n\n👉 Join the Webinar: ${JOIN_LINK}\n\nWe're looking forward to seeing you today! 🚀`\n  },\n\n  '1hour': {\n    subject: `🔔 Starting in 1 Hour — Don't Miss It, ${input.name}!`,\n    body: `Hi ${input.name},\n\nThis is your final reminder — your webinar kicks off in just ONE HOUR!\n\n🕐 Start Time: ${formattedTime}\n\nClick the link below to join. The room is already open so you can jump in early and get settled.\n\n👉 Join Now: ${JOIN_LINK}\n\nWe'll see you in there! 🎉`\n  }\n\n};\n\n// ── Select correct template ───────────────────────────────\nconst message = templates[input.reminder_id];\n\nif (!message) {\n  throw new Error(`No template found for reminder_id: \"${input.reminder_id}\"`);\n}\n\nreturn [{\n  json: {\n    ...input,\n    subject: message.subject,\n    body:    message.body\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        -16
+      ],
+      "id": "8a2cc61f-af1f-47b5-814f-485e56691d51",
+      "name": "Build Email Content"
+    },
+    {
+      "parameters": {
+        "resume": "specificTime",
+        "dateTime": "={{ $json.send_at }}"
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        896,
+        -16
+      ],
+      "id": "e8e051b2-3c8d-48af-b237-6014fef45c24",
+      "name": "Wait Until Send Time",
+      "webhookId": "167d0084-9c97-44ab-89ff-87eca12db691",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.email }}",
+        "subject": "={{ $json.subject }}",
+        "emailType": "text",
+        "message": "={{ $json.body }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1328,
+        -16
+      ],
+      "id": "b982f25d-02a7-43dc-8876-f3bdd1a6bbe2",
+      "name": "Send Reminder Email",
+      "webhookId": "b8fcac1e-8ee4-420f-8f63-6f7c2d7cef27",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "9rv1VVYoKEHLyTFX",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1UAECq83cYWYm61tULhBcW9quVFCLyYL1pbk3z4Fs17U",
+          "mode": "list",
+          "cachedResultName": "Contact Information (Responses)",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1UAECq83cYWYm61tULhBcW9quVFCLyYL1pbk3z4Fs17U/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 245829608,
+          "mode": "list",
+          "cachedResultName": "Reminder Logs",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1UAECq83cYWYm61tULhBcW9quVFCLyYL1pbk3z4Fs17U/edit#gid=245829608"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Timestamp": "={{ $now }}",
+            "Name": "={{ $('Build Email Content').item.json.name }}",
+            "Email": "={{ $('Build Email Content').item.json.email }}",
+            "Reminder": "={{ $('Build Email Content').item.json.reminder_label }}",
+            "Scheduled For": "={{ $('Build Email Content').item.json.send_at }}",
+            "Status": "Sent"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Timestamp",
+              "displayName": "Timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Reminder",
+              "displayName": "Reminder",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Scheduled For",
+              "displayName": "Scheduled For",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1536,
+        -16
+      ],
+      "id": "f401f2f1-ce37-43c7-a152-d54a7325c4d1",
+      "name": "Log Reminder Sent",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "osFLbEY2SXvP0Rho",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "pinData": {
+    "Google Sheets Trigger": [
+      {
+        "json": {
+          "Timestamp": "3/6/2026 13:37:06",
+          "Name": "Oluwanifemi Adefisayo",
+          "Email": "adefisayooluwanifemi28@gmail.com",
+          "Phone number": "08108369009"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Google Sheets Trigger": {
+      "main": [
+        [
+          {
+            "node": "Parse Registration Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Registration Data": {
+      "main": [
+        [
+          {
+            "node": "Webinar Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webinar Config": {
+      "main": [
+        [
+          {
+            "node": "Calculate Reminder Schedule",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate Reminder Schedule": {
+      "main": [
+        [
+          {
+            "node": "Wait Until Send Time",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait Until Send Time": {
+      "main": [
+        [
+          {
+            "node": "Build Email Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Email Content": {
+      "main": [
+        [
+          {
+            "node": "Send Reminder Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Reminder Email": {
+      "main": [
+        [
+          {
+            "node": "Log Reminder Sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "e5e63b5e-e267-4ef6-af8a-5da41aff456a",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "8844a39d1e598f34f99619697ad4222bfb69d7001fcc9b2949e0ee61d46cd2a5"
+  },
+  "id": "IzLANUf14D54E0Iv",
+  "tags": []
+}
