@@ -1,0 +1,2233 @@
+{
+  "name": "Schedule  Confirmation Handler",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "filters": {
+          "labelIds": [
+            "INBOX"
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        -176
+      ],
+      "id": "479247f8-d235-44c7-971c-c9d9dd937d68",
+      "name": "Gmail Trigger",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "ErHnsutDlpSGS3Sj",
+          "name": "adefisayooluwanifemi28 gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const email = $input.item.json;\n\n// Get email details - Gmail structure is different\nconst from = email.From || '';\nconst subject = email.Subject || '';\nconst snippet = email.snippet || ''; // Gmail provides snippet with email preview\nconst threadId = email.threadId;\n\n// Extract email address from \"Name <email@domain.com>\" format\nconst emailMatch = from.match(/<(.+?)>/);\nconst fromEmail = emailMatch ? emailMatch[1] : from;\n\n// Check if it's a reply (subject starts with \"Re:\")\nconst isReply = subject.toLowerCase().startsWith('re:');\n\n// Check if subject matches your coaching emails\nconst isCoachingThread = subject.toLowerCase().includes('schedule') || \n                          subject.toLowerCase().includes('coaching') || \n                          subject.toLowerCase().includes('calendar') ||\n                          subject.toLowerCase().includes('leadership') ||\n                          subject.toLowerCase().includes('resources');\n\n// Check for time/date keywords in snippet (Gmail's text preview)\nconst timeKeywords = [\n  'monday', 'tuesday', 'wednesday', 'thursday', 'friday', \n  'saturday', 'sunday', 'am', 'pm', 'morning', 'afternoon',\n  'slot 1', 'slot 2', 'slot 3', 'slot 4', 'slot 5', 'slot 6',\n  'first option', 'second option', 'works for me', 'available',\n  'feb', 'january', 'february', 'march', 'april', 'may', 'june',\n  'july', 'august', 'september', 'october', 'november', 'december',\n  '5:00', '6:00', '7:00', '8:00', '9:00', '10:00', '11:00', '12:00',\n  '1:00', '2:00', '3:00', '4:00'\n];\n\nconst containsTimeReference = timeKeywords.some(keyword => \n  snippet.toLowerCase().includes(keyword)\n);\n\n// Pass through if it matches criteria\nif (isReply && isCoachingThread && containsTimeReference) {\n  return [{\n    json: {\n      from: fromEmail,\n      fromFull: from,\n      subject: subject,\n      snippet: snippet,\n      threadId: threadId,\n      receivedAt: new Date().toISOString(),\n      isValidResponse: true\n    }\n  }];\n}\n\n// Stop workflow if doesn't match\nreturn [];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        -176
+      ],
+      "id": "7e7b4523-6ea5-474f-92c7-5f2acbffd39c",
+      "name": "Filter for replies"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get snippet and subject\nconst snippet = $input.item.json.snippet || '';\nconst subject = $input.item.json.subject || '';\n\n// ===== STEP 1: Extract only the NEW part of the reply (before quoted text) =====\nlet cleanSnippet = snippet;\n\n// Common patterns that indicate start of quoted text\nconst quotePatterns = [\n  /On\\s+\\w+,\\s+\\d+\\s+\\w+\\s+\\d{4}\\s+at\\s+\\d+:\\d+/i,  // \"On Tue, 3 Feb 2026 at 07:32\"\n  /On\\s+\\d+\\/\\d+\\/\\d+/i,                              // \"On 02/03/2026\"\n  /-{3,}\\s*Original Message\\s*-{3,}/i,                // \"--- Original Message ---\"\n  /_{3,}/,                                             // \"___________\"\n  /From:\\s*</i,                                        // Email headers\n  />\\s*wrote:/i,                                       // \"> wrote:\"\n  /&lt;.*?&gt;\\s*wrote:/i                             // HTML encoded \"wrote:\"\n];\n\n// Find where quoted text starts and cut it off\nfor (const pattern of quotePatterns) {\n  const match = snippet.match(pattern);\n  if (match) {\n    cleanSnippet = snippet.substring(0, match.index).trim();\n    break;\n  }\n}\n\n// Use cleanSnippet instead of full snippet for processing\nconst emailText = (cleanSnippet + ' ' + subject).toLowerCase();\n\n// ===== STEP 2: Initialize result object =====\nlet result = {\n  date: null,\n  time: null,\n  timezone: 'EST',\n  needs_clarification: false,\n  raw_text: emailText,\n  clean_snippet: cleanSnippet\n};\n\n// ===== STEP 3: Day of week mapping =====\nconst daysOfWeek = {\n  'monday': 1,\n  'tuesday': 2,\n  'wednesday': 3,\n  'thursday': 4,\n  'friday': 5,\n  'saturday': 6,\n  'sunday': 0\n};\n\n// ===== STEP 4: Month mapping =====\nconst months = {\n  'jan': 0, 'january': 0,\n  'feb': 1, 'february': 1,\n  'mar': 2, 'march': 2,\n  'apr': 3, 'april': 3,\n  'may': 4,\n  'jun': 5, 'june': 5,\n  'jul': 6, 'july': 6,\n  'aug': 7, 'august': 7,\n  'sep': 8, 'sept': 8, 'september': 8,\n  'oct': 9, 'october': 9,\n  'nov': 10, 'november': 10,\n  'dec': 11, 'december': 11\n};\n\n// ===== STEP 5: Extract Date =====\n\n// Pattern 1: \"monday feb 2\" or \"monday february 2\"\nconst datePattern1 = /(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|january|february|march|april|june|july|august|september|october|november|december)\\s*(\\d{1,2})/i;\nconst match1 = emailText.match(datePattern1);\n\nif (match1) {\n  const month = months[match1[1].toLowerCase()];\n  const day = parseInt(match1[2]);\n  const year = new Date().getFullYear();\n  \n  // Create date\n  let extractedDate = new Date(year, month, day);\n  \n  // IMPROVED: Only go to next year if more than 7 days in past\n  const today = new Date();\n  const diffDays = (today - extractedDate) / (1000 * 60 * 60 * 24);\n  \n  if (diffDays > 7) {\n    extractedDate.setFullYear(year + 1);\n  } else if (diffDays > 0 && diffDays <= 7) {\n    // If within past week, check if day of week matches\n    const dayName = match1[0].split(' ')[0].toLowerCase();\n    const expectedDayNum = daysOfWeek[dayName];\n    \n    if (extractedDate.getDay() !== expectedDayNum) {\n      // Day doesn't match - find next occurrence\n      const currentDay = today.getDay();\n      let daysUntil = expectedDayNum - currentDay;\n      if (daysUntil <= 0) daysUntil += 7;\n      \n      extractedDate = new Date(today);\n      extractedDate.setDate(today.getDate() + daysUntil);\n    } else {\n      // Day matches but date is in past - assume next week\n      extractedDate.setDate(extractedDate.getDate() + 7);\n    }\n  }\n  \n  result.date = extractedDate.toISOString().split('T')[0];\n}\n\n// Pattern 2: \"feb 2\", \"february 2\" (without day of week)\nconst datePattern2 = /(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|january|february|march|april|june|july|august|september|october|november|december)\\s*(\\d{1,2})/i;\nconst match2 = !match1 && emailText.match(datePattern2);\n\nif (match2) {\n  const month = months[match2[1].toLowerCase()];\n  const day = parseInt(match2[2]);\n  const year = new Date().getFullYear();\n  \n  let extractedDate = new Date(year, month, day);\n  const today = new Date();\n  const diffDays = (today - extractedDate) / (1000 * 60 * 60 * 24);\n  \n  // More lenient - only bump year if more than 30 days in past\n  if (diffDays > 30) {\n    extractedDate.setFullYear(year + 1);\n  }\n  \n  result.date = extractedDate.toISOString().split('T')[0];\n}\n\n// Pattern 3: Numeric date \"2/5\" or \"02/05/2026\"\nconst datePattern3 = /(\\d{1,2})\\/(\\d{1,2})(?:\\/(\\d{2,4}))?/;\nconst match3 = !match1 && !match2 && emailText.match(datePattern3);\n\nif (match3) {\n  const month = parseInt(match3[1]) - 1;\n  const day = parseInt(match3[2]);\n  const year = match3[3] ? (match3[3].length === 2 ? 2000 + parseInt(match3[3]) : parseInt(match3[3])) : new Date().getFullYear();\n  \n  const extractedDate = new Date(year, month, day);\n  result.date = extractedDate.toISOString().split('T')[0];\n}\n\n// Pattern 4: Day of week only (e.g., \"monday\")\nif (!result.date) {\n  for (const [day, dayNum] of Object.entries(daysOfWeek)) {\n    if (emailText.includes(day)) {\n      const today = new Date();\n      const currentDay = today.getDay();\n      let daysUntil = dayNum - currentDay;\n      if (daysUntil <= 0) daysUntil += 7;\n      \n      const targetDate = new Date(today);\n      targetDate.setDate(today.getDate() + daysUntil);\n      result.date = targetDate.toISOString().split('T')[0];\n      break;\n    }\n  }\n}\n\n// ===== STEP 6: Extract Time =====\n\n// Pattern 1: \"5:00 am\", \"5:00am\", \"6:00 am\"\nconst timePattern1 = /(\\d{1,2}):?(\\d{2})?\\s*(am|pm)/i;\nconst timeMatch1 = emailText.match(timePattern1);\n\nif (timeMatch1) {\n  let hours = parseInt(timeMatch1[1]);\n  const minutes = timeMatch1[2] ? parseInt(timeMatch1[2]) : 0;\n  const meridiem = timeMatch1[3].toLowerCase();\n  \n  // Convert to 24-hour format\n  if (meridiem === 'pm' && hours !== 12) hours += 12;\n  if (meridiem === 'am' && hours === 12) hours = 0;\n  \n  result.time = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;\n}\n\n// Pattern 2: \"slot 1\", \"slot 2\", etc.\nconst slotMatch = emailText.match(/slot\\s*(\\d)/);\nif (slotMatch && !result.time) {\n  result.selected_slot = parseInt(slotMatch[1]);\n}\n\n// Pattern 3: \"first option\", \"second option\"\nconst optionWords = ['first', 'second', 'third', 'fourth', 'fifth', 'sixth'];\nfor (let i = 0; i < optionWords.length; i++) {\n  if (emailText.includes(optionWords[i] + ' option')) {\n    result.selected_slot = i + 1;\n    break;\n  }\n}\n\n// ===== STEP 7: Validation =====\n\n// Check if we have both date and time (or slot)\nif (!result.date || (!result.time && !result.selected_slot)) {\n  result.needs_clarification = true;\n}\n\n// Validate date is in the future (allow up to 2 days in past for tolerance)\nif (result.date) {\n  const extractedDate = new Date(result.date);\n  const today = new Date();\n  today.setHours(0, 0, 0, 0);\n  \n  const diffDays = (today - extractedDate) / (1000 * 60 * 60 * 24);\n  \n  if (diffDays > 2) {\n    result.needs_clarification = true;\n    result.clarification_reason = 'Date appears to be in the past';\n  }\n}\n\n// ===== STEP 8: Return result =====\nreturn [{\n  json: {\n    ...$input.item.json,\n    extracted: result\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        -176
+      ],
+      "id": "753932a9-5c02-4e90-bf8e-03a5d9468ea3",
+      "name": "Extract Date/Time"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "67337c38-9bd1-4d9d-9106-b03a6a66bee2",
+              "leftValue": "={{ $json.extracted.needs_clarification }}",
+              "rightValue": "false",
+              "operator": {
+                "type": "boolean",
+                "operation": "false",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        672,
+        -176
+      ],
+      "id": "d9ab5c3c-6127-437e-9982-dbe82741a0f8",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "calendar": {
+          "__rl": true,
+          "value": "a5dad97da65225d62d5e8432504e29be8d2496a2cfd6243f3735e8d048797274@group.calendar.google.com",
+          "mode": "list",
+          "cachedResultName": "Todoist"
+        },
+        "returnAll": true,
+        "timeMin": "={{ $json.calendar_query.start_utc }}",
+        "timeMax": "={{ $json.calendar_query.end_utc }}",
+        "options": {
+          "timeZone": {
+            "__rl": true,
+            "value": "America/New_York",
+            "mode": "list",
+            "cachedResultName": "America/New_York"
+          }
+        }
+      },
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [
+        1344,
+        -176
+      ],
+      "id": "f951aea5-8ab8-406c-9da0-1e4fbc904b65",
+      "name": "Get many events",
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "NtWww7JDe0ftdGx2",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const inputData = $input.item.json;\nconst startDateTime = new Date(inputData.extracted.date + 'T' + inputData.extracted.time + ':00');\nconst endDateTime = new Date(startDateTime);\nendDateTime.setMinutes(endDateTime.getMinutes() + 30);\n\nreturn [{\n  json: {\n    ...inputData,\n    calendar_query: {\n      start: startDateTime.toISOString(),\n      end: endDateTime.toISOString()\n    }\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        896,
+        -176
+      ],
+      "id": "2e61151c-015b-4c79-a6f6-e5887e13f6aa",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const inputData = $input.item.json;\nconst extractedDateTime = inputData.extracted;\n\n// Lead's requested time is in EST (UTC-5)\n// Parse the date and time as EST\nconst requestedDateStr = extractedDateTime.date; // \"2026-02-09\"\nconst requestedTimeStr = extractedDateTime.time; // \"06:00\"\n\n// SAFE CHECK: Make sure time exists\nif (!requestedTimeStr) {\n  throw new Error('No time found in extracted data');\n}\n\n// Create date in EST (America/New_York timezone)\n// EST is UTC-5, so 6:00 AM EST = 11:00 AM UTC\nconst [hours, minutes] = requestedTimeStr.split(':');\n\n// Parse as ISO string and convert to UTC\nconst requestedStartEST = new Date(`${requestedDateStr}T${requestedTimeStr}:00-05:00`);\nconst requestedEndEST = new Date(requestedStartEST);\nrequestedEndEST.setMinutes(requestedEndEST.getMinutes() + 30);\n\n// Convert to your local timezone (Africa/Lagos = UTC+1) for calendar query\nconst requestedStartWAT = new Date(requestedStartEST);\nconst requestedEndWAT = new Date(requestedEndEST);\n\n// Format for display\nconst formattedEST = requestedStartEST.toLocaleString('en-US', {\n  weekday: 'long',\n  month: 'long',\n  day: 'numeric',\n  year: 'numeric',\n  hour: 'numeric',\n  minute: '2-digit',\n  timeZone: 'America/New_York',\n  hour12: true\n});\n\nconst formattedWAT = requestedStartWAT.toLocaleString('en-US', {\n  weekday: 'long',\n  month: 'long',\n  day: 'numeric',\n  year: 'numeric',\n  hour: 'numeric',\n  minute: '2-digit',\n  timeZone: 'Africa/Lagos',\n  hour12: true\n});\n\nreturn [{\n  json: {\n    ...inputData,\n    calendar_query: {\n      start_utc: requestedStartEST.toISOString(),\n      end_utc: requestedEndEST.toISOString(),\n      start_est: formattedEST,\n      start_wat: formattedWAT,\n      timezone_lead: 'America/New_York',\n      timezone_coach: 'Africa/Lagos'\n    }\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        -176
+      ],
+      "id": "e6e6b2d4-24cc-41e8-952b-7c760e7e1055",
+      "name": "Calculate Time with Correct Timezone"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get the requested time from earlier in workflow\nconst extracted = $('Extract Date/Time').item.json.extracted;\nconst requestedDate = extracted.date;\nconst requestedTime = extracted.time;\n\n// Get calendar events from previous node\nconst calendarEvents = $input.all();\n\n// Create requested time slot\nconst requestedStart = new Date(requestedDate + 'T' + requestedTime + ':00');\nconst requestedEnd = new Date(requestedStart.getTime() + 30 * 60000); // 30 min duration\n\n// Check for conflicts\nlet hasConflict = false;\nlet conflictingEvent = null;\n\nfor (const event of calendarEvents) {\n  const eventData = event.json;\n  \n  // Skip if no start/end time\n  if (!eventData.start || !eventData.end) continue;\n  \n  const eventStart = new Date(eventData.start.dateTime || eventData.start.date);\n  const eventEnd = new Date(eventData.end.dateTime || eventData.end.date);\n  \n  // Check for overlap\n  if (requestedStart < eventEnd && requestedEnd > eventStart) {\n    hasConflict = true;\n    conflictingEvent = {\n      summary: eventData.summary,\n      start: eventStart.toISOString(),\n      end: eventEnd.toISOString()\n    };\n    break;\n  }\n}\n\n// Get lead info from earlier nodes - with safe fallbacks\nconst filterReplies = $('Filter for replies').item.json;\n\n// Safely extract email\nconst leadEmail = filterReplies.from || '';\n\n// Safely extract name - handle the split() carefully\nlet leadName = '';\nif (filterReplies.fromFull) {\n  // Check if fromFull contains '<' before splitting\n  if (filterReplies.fromFull.includes('<')) {\n    leadName = filterReplies.fromFull.split('<')[0].trim();\n  } else {\n    leadName = filterReplies.fromFull.trim();\n  }\n} else {\n  leadName = 'Valued Client'; // Fallback\n}\n\nconst subject = filterReplies.subject || '';\n\n// Return result\nreturn [{\n  json: {\n    isAvailable: !hasConflict,\n    hasConflict: hasConflict,\n    conflictingEvent: conflictingEvent,\n    requestedSlot: {\n      start: requestedStart.toISOString(),\n      end: requestedEnd.toISOString(),\n      date: requestedDate,\n      time: requestedTime\n    },\n    leadInfo: {\n      email: leadEmail,\n      name: leadName,\n      subject: subject\n    }\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1568,
+        -176
+      ],
+      "id": "ca332502-d35c-45b5-a55b-c7e10bc65f24",
+      "name": "Analyze Availability"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "ddced9b4-b2f5-4a62-8146-df4208e6ae5a",
+              "leftValue": "={{ $json.isAvailable }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1792,
+        -176
+      ],
+      "id": "1019a9c8-1e06-4125-8337-aafb0a7bb988",
+      "name": "If Slot Available"
+    },
+    {
+      "parameters": {
+        "calendar": {
+          "__rl": true,
+          "value": "a5dad97da65225d62d5e8432504e29be8d2496a2cfd6243f3735e8d048797274@group.calendar.google.com",
+          "mode": "list",
+          "cachedResultName": "Todoist"
+        },
+        "start": "={{ $json.requestedSlot.start }}",
+        "end": "={{ $json.requestedSlot.end }}",
+        "additionalFields": {
+          "attendees": [
+            "={{ $json.leadInfo.email }}"
+          ],
+          "description": "=Discovery Call Details:  Lead: {{ $json.leadInfo.name }} Email: {{ $json.leadInfo.email }} Original Subject: {{ $json.leadInfo.subject }}  Scheduled via automated confirmation system.",
+          "location": "https://zoom.us/j/YOUR_MEETING_ID",
+          "sendUpdates": "all",
+          "summary": "=Discovery Call - {{ $json.leadInfo.name }}"
+        }
+      },
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [
+        2016,
+        -272
+      ],
+      "id": "13d7f279-c442-4d0b-9e5a-8446ba81d309",
+      "name": "Create Calendar Event",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "NtWww7JDe0ftdGx2",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.fields.Email }}",
+        "subject": "✅ Your Discovery Call is Confirmed!",
+        "message": "=<div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;\">\n  <!-- Header -->\n  <div style=\"background-color: #4CAF50; color: white; padding: 20px; text-align: center;\">\n    <h1 style=\"margin: 0;\">✅ Your Discovery Call is Confirmed!</h1>\n  </div>\n  \n  <!-- Main Content -->\n  <div style=\"padding: 30px; background-color: #f9f9f9;\">\n    <p style=\"font-size: 16px;\">Hi {{ $json.fields.Name }},</p>\n    \n    <p style=\"font-size: 16px;\">Perfect! I've added our discovery call to both our calendars:</p>\n    \n    <!-- Call Details Box -->\n    <div style=\"background-color: white; padding: 20px; border-left: 4px solid #4CAF50; margin: 20px 0;\">\n      <p style=\"margin: 8px 0; font-size: 16px;\">\n        <strong>📅 Date:</strong> {{ $json.fields[\"Scheduled call date\"] }}\n      </p>\n      <p style=\"margin: 8px 0; font-size: 16px;\">\n        <strong>🕐 Time:</strong> {{ $json.fields[\"Scheduled call time\"] }} EST (30 minutes)\n      </p>\n      <p style=\"margin: 8px 0; font-size: 16px;\">\n        <strong>📞 Join via:</strong> \n        <a href=\"https://zoom.us/j/YOUR_ZOOM_ID\" \n           style=\"color: #4CAF50; text-decoration: none; font-weight: bold;\">\n          Click to Join Meeting\n        </a>\n      </p>\n    </div>\n    \n    <!-- Preparation Section -->\n    <div style=\"background-color: #fff3cd; padding: 20px; border-radius: 5px; margin: 25px 0;\">\n      <h3 style=\"margin-top: 0; color: #856404;\">📋 Before Our Call</h3>\n      <p style=\"margin: 10px 0;\">\n        Please complete this brief intake form (takes 5 minutes):\n      </p>\n      <p style=\"text-align: center; margin: 20px 0;\">\n        <a href=\"YOUR_INTAKE_FORM_LINK\" \n           style=\"background-color: #4CAF50; color: white; padding: 12px 30px; \n                  text-decoration: none; border-radius: 5px; display: inline-block; \n                  font-weight: bold;\">\n          Complete Intake Form →\n        </a>\n      </p>\n      <p style=\"font-size: 14px; color: #666;\">\n        This helps me understand your situation and make our time together as valuable as possible.\n      </p>\n    </div>\n    \n    <!-- Resources Section -->\n    <div style=\"margin: 25px 0;\">\n      <h3 style=\"color: #333;\">📚 Resources for You</h3>\n      <ul style=\"line-height: 1.8; color: #555;\">\n        <li><strong>Calendar invitation</strong> - check your inbox</li>\n        <li><strong>\"Preparing for Your Discovery Call\" guide</strong> - <a href=\"YOUR_GUIDE_LINK\" style=\"color: #4CAF50;\">Download PDF</a></li>\n        <li><strong>My coaching approach overview</strong> - <a href=\"YOUR_APPROACH_LINK\" style=\"color: #4CAF50;\">Learn More</a></li>\n      </ul>\n    </div>\n    \n    <!-- What to Expect -->\n    <div style=\"background-color: white; padding: 20px; border-radius: 5px; margin: 25px 0;\">\n      <h3 style=\"margin-top: 0; color: #333;\">💡 What to Expect</h3>\n      <p style=\"margin: 10px 0; line-height: 1.6;\">\n        During our 30-minute call, we'll:\n      </p>\n      <ul style=\"line-height: 1.8; color: #555;\">\n        <li>Discuss your current leadership challenges</li>\n        <li>Explore your goals and aspirations</li>\n        <li>Determine if coaching is the right fit</li>\n        <li>Answer any questions you have about working together</li>\n      </ul>\n    </div>\n    \n    <!-- CTA -->\n    <p style=\"font-size: 16px; margin: 30px 0;\">\n      Looking forward to our conversation!\n    </p>\n    \n    <!-- Signature -->\n    <div style=\"margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd;\">\n      <p style=\"margin: 5px 0; font-weight: bold; color: #333;\">NiffyJade</p>\n      <p style=\"margin: 5px 0; color: #666;\">Leadership Coach</p>\n      <p style=\"margin: 5px 0; color: #666; font-size: 14px;\">\n        📧 adefisayooluwanifemi28@gmail.com\n      </p>\n    </div>\n  </div>\n  \n  <!-- Footer -->\n  <div style=\"background-color: #333; color: #999; padding: 20px; text-align: center; font-size: 12px;\">\n    <p style=\"margin: 5px 0;\">Need to reschedule? Reply to this email.</p>\n    <p style=\"margin: 5px 0;\">Scheduled via automated confirmation system</p>\n  </div>\n</div>",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        4896,
+        -368
+      ],
+      "id": "1c9a192a-2753-46e0-ae38-ec17a9bb7fcc",
+      "name": "Send Confirmation Email",
+      "webhookId": "3a5a1701-7d15-442d-8739-3a58305d1ac0",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "ErHnsutDlpSGS3Sj",
+          "name": "adefisayooluwanifemi28 gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.leadInfo.email }}",
+        "subject": "=Re: {{ $json.leadInfo.subject }}",
+        "message": "=<p>Hi {{ $json.leadInfo.name }},</p>  <p>Thank you for your response! Unfortunately, the time slot you selected is no longer available.</p>  <p><strong>Requested time:</strong> {{ $json.requestedSlot.date }} at {{ $json.requestedSlot.time }} EST</p>  <p>Here are some alternative times that work for me:</p>  <p><strong>Alternative Slot 1:</strong> Tuesday, Feb 11 at 2:00 PM EST<br> <strong>Alternative Slot 2:</strong> Wednesday, Feb 12 at 10:00 AM EST<br> <strong>Alternative Slot 3:</strong> Thursday, Feb 13 at 3:00 PM EST</p>  <p>Please let me know which of these works best for you, or feel free to suggest another time.</p>  <p>Looking forward to connecting!</p>  <p>Best regards,<br> Niffyjade</p>",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        2016,
+        -80
+      ],
+      "id": "9ec665f0-cd0d-47d9-9ee3-b028f189c254",
+      "name": "Send Alternate Times Email",
+      "webhookId": "acae4287-9f09-4ad5-829f-b726490c886a",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "ErHnsutDlpSGS3Sj",
+          "name": "adefisayooluwanifemi28 gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "app1DHT7BsY4aQxM7",
+          "mode": "list",
+          "cachedResultName": "Momentum Coaching CRM",
+          "cachedResultUrl": "https://airtable.com/app1DHT7BsY4aQxM7"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblTX5xiD3vPWAh1S",
+          "mode": "list",
+          "cachedResultName": "Leads & Clients",
+          "cachedResultUrl": "https://airtable.com/app1DHT7BsY4aQxM7/tblTX5xiD3vPWAh1S"
+        },
+        "filterByFormula": "={Email} = '{{ $('Analyze Availability').item.json.leadInfo.email }}'",
+        "returnAll": false,
+        "limit": 1,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        2240,
+        -272
+      ],
+      "id": "b171d435-9130-460e-82e7-8596e68098b0",
+      "name": "Search for Lead in Airtable",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "mDfI7MvlHh9goNBw",
+          "name": "oluwanifemiadefisayo"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "base": {
+          "__rl": true,
+          "value": "app1DHT7BsY4aQxM7",
+          "mode": "list",
+          "cachedResultName": "Momentum Coaching CRM",
+          "cachedResultUrl": "https://airtable.com/app1DHT7BsY4aQxM7"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblTX5xiD3vPWAh1S",
+          "mode": "list",
+          "cachedResultName": "Leads & Clients",
+          "cachedResultUrl": "https://airtable.com/app1DHT7BsY4aQxM7/tblTX5xiD3vPWAh1S"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $json.id }}",
+            "Status": "Call Scheduled",
+            "Last Contact": "={{ $now.toFormat('yyyy-MM-dd') }}",
+            "Scheduled call time": "={{ $('Analyze Availability').item.json.requestedSlot.time }}",
+            "Scheduled call date": "={{ $('Analyze Availability').item.json.requestedSlot.date }}",
+            "Calendar event Id": "={{ $('Create Calendar Event').item.json.id }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": false
+            },
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Phone",
+              "displayName": "Phone",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Company",
+              "displayName": "Company",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Title",
+              "displayName": "Title",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Company Size",
+              "displayName": "Company Size",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Budget Range",
+              "displayName": "Budget Range",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "<$2K",
+                  "value": "<$2K"
+                },
+                {
+                  "name": "$2-5K",
+                  "value": "$2-5K"
+                },
+                {
+                  "name": "$5-10K",
+                  "value": "$5-10K"
+                },
+                {
+                  "name": "$10K+",
+                  "value": "$10K+"
+                }
+              ],
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Timeline",
+              "displayName": "Timeline",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "ASAP",
+                  "value": "ASAP"
+                },
+                {
+                  "name": "1-2 months",
+                  "value": "1-2 months"
+                },
+                {
+                  "name": "3+ months",
+                  "value": "3+ months"
+                },
+                {
+                  "name": "exploring",
+                  "value": "exploring"
+                }
+              ],
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Lead Score",
+              "displayName": "Lead Score",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "New",
+                  "value": "New"
+                },
+                {
+                  "name": "Contacted",
+                  "value": "Contacted"
+                },
+                {
+                  "name": "Call Scheduled",
+                  "value": "Call Scheduled"
+                },
+                {
+                  "name": "Proposal Sent",
+                  "value": "Proposal Sent"
+                },
+                {
+                  "name": "Client",
+                  "value": "Client"
+                },
+                {
+                  "name": "Closed Lost",
+                  "value": "Closed Lost"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Lead Source",
+              "displayName": "Lead Source",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Challenge",
+              "displayName": "Challenge",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Goal",
+              "displayName": "Goal",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Tags",
+              "displayName": "Tags",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "array",
+              "options": [
+                {
+                  "name": "Hot Lead",
+                  "value": "Hot Lead"
+                },
+                {
+                  "name": "Warm Lead",
+                  "value": "Warm Lead"
+                },
+                {
+                  "name": "Nurture",
+                  "value": "Nurture"
+                }
+              ],
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Drive Folder URL",
+              "displayName": "Drive Folder URL",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Created Date",
+              "displayName": "Created Date",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            },
+            {
+              "id": "Last Contact",
+              "displayName": "Last Contact",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Next Action",
+              "displayName": "Next Action",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Scheduled call date",
+              "displayName": "Scheduled call date",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Scheduled call time",
+              "displayName": "Scheduled call time",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Calendar event Id",
+              "displayName": "Calendar event Id",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        2688,
+        -368
+      ],
+      "id": "581b546c-5573-4091-9be8-0a132c4e330f",
+      "name": "Update Lead with Booking Details",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "mDfI7MvlHh9goNBw",
+          "name": "oluwanifemiadefisayo"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "33e27b47-42f7-49f0-89d7-578133d7e90a",
+              "leftValue": "={{ $json.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2464,
+        -272
+      ],
+      "id": "66458272-93e4-4d21-aff1-593165509348",
+      "name": "If Lead Found in Airtable"
+    },
+    {
+      "parameters": {
+        "resource": "folder",
+        "name": "={{ $('Analyze Availability').item.json.leadInfo.name }} - Discovery Call {{ $now.toFormat('yyyy-MM-dd') }}",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "1az5agPc2-DR1kRx6pUw_U6_hCJfEl069",
+          "mode": "list",
+          "cachedResultName": "Coaching Clients",
+          "cachedResultUrl": "https://drive.google.com/drive/folders/1az5agPc2-DR1kRx6pUw_U6_hCJfEl069"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        2912,
+        -272
+      ],
+      "id": "ad911637-a3e5-4fe2-adbf-5be16293a82f",
+      "name": "Create Client Folder",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "ptdp1Lai3uSRWGIB",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get the main folder data from \"Build Folder Link\" node\nconst mainFolder = $('Build Folder Link').item.json;\nconst mainFolderId = mainFolder.id;\nconst mainFolderLink = mainFolder.webViewLink;\n\n// Define all subfolders to create\nconst subfolders = [\n  { name: 'Session Notes', isAssessments: false },\n  { name: 'Resources Shared', isAssessments: false },\n  { name: 'Assessments & Results', isAssessments: true }, // ← Mark this one\n  { name: 'Contracts & Agreements', isAssessments: false },\n  { name: 'Invoices & Payment', isAssessments: false },\n  { name: 'Action Plans & Goals', isAssessments: false }\n];\n\n// Return one item for each subfolder\nreturn subfolders.map(folder => ({\n  json: {\n    folderName: folder.name,\n    parentFolderId: mainFolderId,\n    mainFolderLink: mainFolderLink,\n    mainFolderId: mainFolderId,\n    isAssessmentsFolder: folder.isAssessments // ← New flag\n  }\n}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3360,
+        -272
+      ],
+      "id": "8d5c11d6-14a8-427e-9096-793f4074ccdf",
+      "name": "Prepare Subfolder List"
+    },
+    {
+      "parameters": {
+        "resource": "folder",
+        "name": "={{ $json.folderName }}",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "={{ $json.parentFolderId }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        3584,
+        -272
+      ],
+      "id": "4db377f9-981d-4401-832d-40b91f8c99ac",
+      "name": "Create Subfolders (Loop)",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "ptdp1Lai3uSRWGIB",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get folder data from previous nodes\nconst mainFolder = $('Build Folder Link').item.json;\n\n// Get lead data from Airtable search\nconst airtableSearch = $('Search for Lead in Airtable').item.json;\n\n// Try to get Assessments folder ID from the Store node\nlet assessmentsFolderId = null;\ntry {\n  const assessmentsData = $('Store Assessments Folder ID').item.json;\n  assessmentsFolderId = assessmentsData.assessmentsFolderId;\n} catch (error) {\n  // If node doesn't exist yet, leave as null\n  console.log('Assessments folder ID not found');\n}\n\n// Handle both cases: when fields exist and when they don't\nlet leadEmail, leadName, scheduledDate, scheduledTime, calendarEventId;\n\nif (airtableSearch.fields) {\n  leadEmail = airtableSearch.fields.Email;\n  leadName = airtableSearch.fields.Name;\n  scheduledDate = airtableSearch.fields['Scheduled call date'];\n  scheduledTime = airtableSearch.fields['Scheduled call time'];\n  calendarEventId = airtableSearch.fields['Calendar event Id'];\n} else {\n  leadEmail = airtableSearch.Email;\n  leadName = airtableSearch.Name;\n  scheduledDate = airtableSearch['Scheduled call date'];\n  scheduledTime = airtableSearch['Scheduled call time'];\n  calendarEventId = airtableSearch['Calendar event Id'];\n}\n\nreturn [{\n  json: {\n    // Folder information\n    folderId: mainFolder.id,\n    folderLink: mainFolder.webViewLink,\n    folderName: mainFolder.name,\n    assessmentsFolderId: assessmentsFolderId, // ← NEW\n    \n    // Lead information for email\n    Email: leadEmail,\n    Name: leadName,\n    'Scheduled call date': scheduledDate,\n    'Scheduled call time': scheduledTime,\n    'Calendar event Id': calendarEventId\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4224,
+        -272
+      ],
+      "id": "9920ed57-4231-43fb-9d2b-1687a525cef5",
+      "name": "Get Main Folder Link"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get folder data from previous node\n   const folderId = $input.item.json.id;\n   const folderName = $input.item.json.name;\n\n   // Google Drive folder URLs follow this pattern:\n   // https://drive.google.com/drive/folders/{FOLDER_ID}\n   const webViewLink = `https://drive.google.com/drive/folders/${folderId}`;\n\n   return [{\n     json: {\n       id: folderId,\n       name: folderName,\n       webViewLink: webViewLink,\n       mimeType: 'application/vnd.google-apps.folder'\n     }\n   }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3136,
+        -272
+      ],
+      "id": "aae9f581-6e30-4cb3-afde-222dc288aa8b",
+      "name": "Build Folder Link"
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "app1DHT7BsY4aQxM7",
+          "mode": "list",
+          "cachedResultName": "Momentum Coaching CRM",
+          "cachedResultUrl": "https://airtable.com/app1DHT7BsY4aQxM7"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblTX5xiD3vPWAh1S",
+          "mode": "list",
+          "cachedResultName": "Leads & Clients",
+          "cachedResultUrl": "https://airtable.com/app1DHT7BsY4aQxM7/tblTX5xiD3vPWAh1S"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Phone",
+              "displayName": "Phone",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Company",
+              "displayName": "Company",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Title",
+              "displayName": "Title",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Company Size",
+              "displayName": "Company Size",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Budget Range",
+              "displayName": "Budget Range",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "<$2K",
+                  "value": "<$2K"
+                },
+                {
+                  "name": "$2-5K",
+                  "value": "$2-5K"
+                },
+                {
+                  "name": "$5-10K",
+                  "value": "$5-10K"
+                },
+                {
+                  "name": "$10K+",
+                  "value": "$10K+"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Timeline",
+              "displayName": "Timeline",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "ASAP",
+                  "value": "ASAP"
+                },
+                {
+                  "name": "1-2 months",
+                  "value": "1-2 months"
+                },
+                {
+                  "name": "3+ months",
+                  "value": "3+ months"
+                },
+                {
+                  "name": "exploring",
+                  "value": "exploring"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Lead Score",
+              "displayName": "Lead Score",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "New",
+                  "value": "New"
+                },
+                {
+                  "name": "Contacted",
+                  "value": "Contacted"
+                },
+                {
+                  "name": "Call Scheduled",
+                  "value": "Call Scheduled"
+                },
+                {
+                  "name": "Proposal Sent",
+                  "value": "Proposal Sent"
+                },
+                {
+                  "name": "Client",
+                  "value": "Client"
+                },
+                {
+                  "name": "Closed Lost",
+                  "value": "Closed Lost"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Lead Source",
+              "displayName": "Lead Source",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Challenge",
+              "displayName": "Challenge",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Goal",
+              "displayName": "Goal",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Tags",
+              "displayName": "Tags",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "array",
+              "options": [
+                {
+                  "name": "Hot Lead",
+                  "value": "Hot Lead"
+                },
+                {
+                  "name": "Warm Lead",
+                  "value": "Warm Lead"
+                },
+                {
+                  "name": "Nurture",
+                  "value": "Nurture"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Drive Folder URL",
+              "displayName": "Drive Folder URL",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Created Date",
+              "displayName": "Created Date",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            },
+            {
+              "id": "Last Contact",
+              "displayName": "Last Contact",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Next Action",
+              "displayName": "Next Action",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Scheduled call date",
+              "displayName": "Scheduled call date",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Scheduled call time",
+              "displayName": "Scheduled call time",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Calendar event Id",
+              "displayName": "Calendar event Id",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        2688,
+        -176
+      ],
+      "id": "11adb75d-c7f7-4f0a-b949-f051ae864e71",
+      "name": "Create Lead in Airtable",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "mDfI7MvlHh9goNBw",
+          "name": "oluwanifemiadefisayo"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "base": {
+          "__rl": true,
+          "value": "app1DHT7BsY4aQxM7",
+          "mode": "list",
+          "cachedResultName": "Momentum Coaching CRM",
+          "cachedResultUrl": "https://airtable.com/app1DHT7BsY4aQxM7"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblTX5xiD3vPWAh1S",
+          "mode": "list",
+          "cachedResultName": "Leads & Clients",
+          "cachedResultUrl": "https://airtable.com/app1DHT7BsY4aQxM7/tblTX5xiD3vPWAh1S"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $json.id }}",
+            "Drive Folder URL": "={{ $json.fields[\"Drive Folder URL\"] }}",
+            "Name": "={{ $json.fields.Name }}",
+            "Email": "={{ $json.fields.Email }}",
+            "Phone": "={{ $json.fields.Phone }}",
+            "Company": "={{ $json.fields.Company }}",
+            "Title": "={{ $json.fields.Title }}",
+            "Company Size": "={{ $json.fields[\"Company Size\"] }}",
+            "Budget Range": "={{ $json.fields[\"Budget Range\"] }}",
+            "Timeline": "={{ $json.fields.Timeline }}",
+            "Intake Responses": "={{ $json.fields['Intake Responses'] }}",
+            "Drive Folder ID": "={{ $json.fields['Drive Folder ID'] }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": false
+            },
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Phone",
+              "displayName": "Phone",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Company",
+              "displayName": "Company",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Title",
+              "displayName": "Title",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Company Size",
+              "displayName": "Company Size",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Budget Range",
+              "displayName": "Budget Range",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "<$2K",
+                  "value": "<$2K"
+                },
+                {
+                  "name": "$2-5K",
+                  "value": "$2-5K"
+                },
+                {
+                  "name": "$5-10K",
+                  "value": "$5-10K"
+                },
+                {
+                  "name": "$10K+",
+                  "value": "$10K+"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Timeline",
+              "displayName": "Timeline",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "ASAP",
+                  "value": "ASAP"
+                },
+                {
+                  "name": "1-2 months",
+                  "value": "1-2 months"
+                },
+                {
+                  "name": "3+ months",
+                  "value": "3+ months"
+                },
+                {
+                  "name": "exploring",
+                  "value": "exploring"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Lead Score",
+              "displayName": "Lead Score",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "New",
+                  "value": "New"
+                },
+                {
+                  "name": "Contacted",
+                  "value": "Contacted"
+                },
+                {
+                  "name": "Call Scheduled",
+                  "value": "Call Scheduled"
+                },
+                {
+                  "name": "Proposal Sent",
+                  "value": "Proposal Sent"
+                },
+                {
+                  "name": "Client",
+                  "value": "Client"
+                },
+                {
+                  "name": "Closed Lost",
+                  "value": "Closed Lost"
+                },
+                {
+                  "name": "Intake Complete",
+                  "value": "Intake Complete"
+                }
+              ],
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Lead Source",
+              "displayName": "Lead Source",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Challenge",
+              "displayName": "Challenge",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Goal",
+              "displayName": "Goal",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Tags",
+              "displayName": "Tags",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "array",
+              "options": [
+                {
+                  "name": "Hot Lead",
+                  "value": "Hot Lead"
+                },
+                {
+                  "name": "Warm Lead",
+                  "value": "Warm Lead"
+                },
+                {
+                  "name": "Nurture",
+                  "value": "Nurture"
+                }
+              ],
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Drive Folder URL",
+              "displayName": "Drive Folder URL",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Created Date",
+              "displayName": "Created Date",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            },
+            {
+              "id": "Last Contact",
+              "displayName": "Last Contact",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Next Action",
+              "displayName": "Next Action",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Scheduled call date",
+              "displayName": "Scheduled call date",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Scheduled call time",
+              "displayName": "Scheduled call time",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Calendar event Id",
+              "displayName": "Calendar event Id",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Intake Responses",
+              "displayName": "Intake Responses",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Drive Folder ID",
+              "displayName": "Drive Folder ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        4672,
+        -368
+      ],
+      "id": "f5aec7ec-c811-4902-8da8-fc5ff3879c41",
+      "name": "Update Airtable with Drive folder URL",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "mDfI7MvlHh9goNBw",
+          "name": "oluwanifemiadefisayo"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. GET DATA (Corrected for your Workflow)\n// ---------------------------------------------------------\nconst item = $input.item || $input.first();\nconst json = item.json || item;\n\n// Data should now be in the \"fields\" property\nconst fields = json.fields || json;\n\n// 2. MAP THE FIELDS (With Fallbacks)\n// ---------------------------------------------------------\nconst leadName = fields[\"Name\"] || fields[\"name\"] || 'New Client';\nconst company = fields[\"Company\"] || fields[\"company\"] || 'Unknown Company';\nconst leadEmail = fields[\"Email\"] || fields[\"email\"] || 'no-email@example.com';\nconst leadScore = fields[\"Lead Score\"] || 'N/A';\nconst challenge = fields[\"Challenge\"] || 'Not specified';\nconst goal = fields[\"Goal\"] || 'Not specified';\nconst driveFolderUrl = fields[\"Drive Folder URL\"] || '';\n\n// -- Parse the Call Date --\nconst dateStr = fields[\"Scheduled call date\"];\nconst timeStr = fields[\"Scheduled call time\"] || \"12:00\";\n\nlet callDate = new Date();\nif (dateStr) {\n    callDate = new Date(`${dateStr}T${timeStr}:00`);\n}\n\n// 3. CONFIGURATION (YOUR REAL IDS)\n// ---------------------------------------------------------\nconst CLICKUP_LIST_ID = \"901215691219\";\nconst SARAH_USER_ID = 90126356128;\n\nconst CUSTOM_FIELD_IDS = {\n    clientEmail: \"74b86ab2-b755-45c6-bcbf-f9f0fa515cde\",\n    company: \"34041b5d-6705-4467-84fd-2c074faee7a3\",\n    driveFolder: \"53a5af00-0bab-40f3-b2df-e80fa2ef9ae8\"\n};\n\n// 4. HELPER: Calculate Due Dates\n// ---------------------------------------------------------\nfunction calculateDueDate(baseDate, daysOffset) {\n  const date = new Date(baseDate);\n  date.setDate(date.getDate() + daysOffset);\n  return date.getTime();\n}\n\n// 5. DEFINE THE TASKS\n// ---------------------------------------------------------\nconst tasks = [\n  {\n    name: `1. Review Intake - ${leadName}`,\n    description: `Review intake for ${leadName} (${company})\\n\\n**Lead Score:** ${leadScore}\\n**Challenge:** ${challenge}\\n**Goal:** ${goal}\\n\\n[Drive Folder](${driveFolderUrl})`,\n    due_date: calculateDueDate(callDate, -2),\n    priority: 2\n  },\n  {\n    name: `2. Pre-Call Prep - ${leadName}`,\n    description: `Prepare for call on ${dateStr || 'Today'} at ${timeStr}.\\n\\nChecklist:\\n- [ ] Review notes\\n- [ ] Research ${company} (${fields[\"Company Size\"] || 'Unknown'} employees)\\n- [ ] Review budget: ${fields[\"Budget Range\"] || 'Unknown'}`,\n    due_date: calculateDueDate(callDate, -1),\n    priority: 1\n  },\n  {\n    name: `3. Discovery Call - ${leadName}`,\n    description: `Conduct call with ${leadName}\\n\\n**Phone:** ${fields.Phone || 'N/A'}\\n**Title:** ${fields.Title || 'N/A'}\\n**Folder:** [Drive](${driveFolderUrl})`,\n    due_date: calculateDueDate(callDate, 0),\n    priority: 1\n  },\n  {\n    name: `4. Send Call Notes - ${leadName}`,\n    description: `Summarize insights and send to ${leadEmail}.`,\n    due_date: calculateDueDate(callDate, 1),\n    priority: 2\n  },\n  {\n    name: `5. Prepare Proposal - ${leadName}`,\n    description: `Draft proposal based on goal: \"${goal}\".\\nTimeline: ${fields.Timeline || 'Unknown'}`,\n    due_date: calculateDueDate(callDate, 2),\n    priority: 2\n  },\n  {\n    name: `6. Send Proposal - ${leadName}`,\n    description: `Send proposal to ${leadEmail}.`,\n    due_date: calculateDueDate(callDate, 3),\n    priority: 2\n  },\n  {\n    name: `7. Follow-Up Call - ${leadName}`,\n    description: `Check in regarding proposal sent on ${dateStr || 'Call Date'}.`,\n    due_date: calculateDueDate(callDate, 6),\n    priority: 3\n  },\n  {\n    name: `8. Onboarding Setup - ${leadName}`,\n    description: `Set up contract for ${company} if signed.`,\n    due_date: calculateDueDate(callDate, 10),\n    priority: 3\n  }\n];\n\n// 6. RETURN DATA FOR CLICKUP\n// ---------------------------------------------------------\nreturn tasks.map(task => {\n  return {\n    json: {\n      ...task,\n      list_id: CLICKUP_LIST_ID,\n      assignee_id: SARAH_USER_ID,\n      cf_email_val: leadEmail,\n      cf_company_val: company,\n      cf_drive_val: driveFolderUrl,\n      cf_email_id: CUSTOM_FIELD_IDS.clientEmail,\n      cf_company_id: CUSTOM_FIELD_IDS.company,\n      cf_drive_id: CUSTOM_FIELD_IDS.driveFolder\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4672,
+        -176
+      ],
+      "id": "af743f8f-d4b4-496b-a15a-1da3db8d1e79",
+      "name": "Prepare ClickUp Task Data"
+    },
+    {
+      "parameters": {
+        "team": "9012970158",
+        "space": "90126356128",
+        "folderless": true,
+        "list": "901215691219",
+        "name": "={{ $json.name }}",
+        "additionalFields": {
+          "assignees": [
+            200446560
+          ],
+          "content": "={{ $json.description }}",
+          "dueDate": "={{ $json.due_date }}",
+          "notifyAll": false,
+          "priority": "={{ $json.priority }}",
+          "status": "to do"
+        }
+      },
+      "type": "n8n-nodes-base.clickUp",
+      "typeVersion": 1,
+      "position": [
+        4896,
+        -176
+      ],
+      "id": "824e2826-3987-47e0-8e73-15ec16b1d5e6",
+      "name": "Create a task",
+      "credentials": {
+        "clickUpApi": {
+          "id": "7GynTMX6diP1XBlM",
+          "name": "Unnamed credential"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "setCustomField",
+        "task": "={{ $json.id }}",
+        "field": "={{ $('Prepare ClickUp Task Data').item.json.cf_email_id }}",
+        "value": "={{ $('Prepare ClickUp Task Data').item.json.cf_email_val }}"
+      },
+      "type": "n8n-nodes-base.clickUp",
+      "typeVersion": 1,
+      "position": [
+        4752,
+        240
+      ],
+      "id": "3335d9af-696d-4fd5-a426-f3219bb1a0ed",
+      "name": "set client email",
+      "credentials": {
+        "clickUpApi": {
+          "id": "7GynTMX6diP1XBlM",
+          "name": "Unnamed credential"
+        }
+      },
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "operation": "setCustomField",
+        "task": "={{ $('Create a task').item.json.id }}",
+        "field": "={{ $('Prepare ClickUp Task Data').item.json.cf_company_id }}",
+        "value": "={{ $('Prepare ClickUp Task Data').item.json.cf_company_val }}"
+      },
+      "type": "n8n-nodes-base.clickUp",
+      "typeVersion": 1,
+      "position": [
+        4976,
+        240
+      ],
+      "id": "3ef4273e-2c77-4b81-b042-3de88717a072",
+      "name": "set company",
+      "credentials": {
+        "clickUpApi": {
+          "id": "7GynTMX6diP1XBlM",
+          "name": "Unnamed credential"
+        }
+      },
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "operation": "setCustomField",
+        "task": "={{ $('Create a task').item.json.id }}",
+        "field": "={{ $('Prepare ClickUp Task Data').item.json.cf_drive_id }}",
+        "value": "={{ $('Prepare ClickUp Task Data').item.json.cf_drive_val }}"
+      },
+      "type": "n8n-nodes-base.clickUp",
+      "typeVersion": 1,
+      "position": [
+        5200,
+        240
+      ],
+      "id": "ef63ad48-fde8-44ea-b0d8-85f5f51539a3",
+      "name": "set drive folder",
+      "credentials": {
+        "clickUpApi": {
+          "id": "7GynTMX6diP1XBlM",
+          "name": "Unnamed credential"
+        }
+      },
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get the Airtable lead data\nconst airtableData = $('Search for Lead in Airtable').first().json;\n\n// Get the folder link\nconst folderLink = $('Get Main Folder Link').first().json.folderLink;\n\n// Check if data is in \"fields\" property or at root level\nconst leadFields = airtableData.fields || airtableData;\n\n// Return ALL the lead data PLUS the folder URL\nreturn [{\n  json: {\n    // Pass through the record ID\n    id: airtableData.id,\n    \n    // Pass through ALL the Airtable fields for ClickUp to use\n    fields: {\n      ...leadFields,\n      'Drive Folder URL': folderLink\n    }\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4448,
+        -176
+      ],
+      "id": "78f0f4dc-8466-4405-a633-290d8c3a3309",
+      "name": "prepare for clickup"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get the Airtable lead data\nconst airtableData = $('Search for Lead in Airtable').first().json;\n\n// Get the folder link and assessments folder ID\nconst folderData = $('Get Main Folder Link').first().json;\nconst folderLink = folderData.folderLink;\nconst assessmentsFolderId = folderData.assessmentsFolderId;\n\n// Check if data is in \"fields\" property or at root level\nconst leadFields = airtableData.fields || airtableData;\n\n// Return ALL the lead data PLUS the folder URL and Assessments folder ID\nreturn [{\n  json: {\n    // Pass through the record ID\n    id: airtableData.id,\n    \n    // Pass through ALL the Airtable fields for ClickUp to use\n    fields: {\n      ...leadFields,\n      'Drive Folder URL': folderLink,\n      'Drive Folder ID': assessmentsFolderId // ← NEW\n    }\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4448,
+        -368
+      ],
+      "id": "7d9758ec-db10-4c7a-ab5a-1f95919db159",
+      "name": "Prepare for airtable"
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C0AE3TJJM3M",
+          "mode": "list",
+          "cachedResultName": "new-clients"
+        },
+        "messageType": "block",
+        "blocksUi": "=[\n  {\n    \"type\": \"header\",\n    \"text\": {\n      \"type\": \"plain_text\",\n      \"text\": \"🎉 New Discovery Call Scheduled!\"\n    }\n  },\n  {\n    \"type\": \"section\",\n    \"fields\": [\n      {\n        \"type\": \"mrkdwn\",\n        \"text\": \"*Client:*\\n{{ $('prepare for clickup').first().json.fields['Name'] || 'N/A' }}\"\n      },\n      {\n        \"type\": \"mrkdwn\",\n        \"text\": \"*Email:*\\n{{ $('prepare for clickup').first().json.fields['Email'] || 'N/A' }}\"\n      },\n      {\n        \"type\": \"mrkdwn\",\n        \"text\": \"*Company:*\\n{{ $('prepare for clickup').first().json.fields['Company'] || 'N/A' }}\"\n      },\n      {\n        \"type\": \"mrkdwn\",\n        \"text\": \"*Title:*\\n{{ $('prepare for clickup').first().json.fields['Title'] || 'N/A' }}\"\n      },\n      {\n        \"type\": \"mrkdwn\",\n        \"text\": \"*Call Date:*\\n{{ $('prepare for clickup').first().json.fields['Scheduled call date'] || 'TBD' }}\"\n      },\n      {\n        \"type\": \"mrkdwn\",\n        \"text\": \"*Call Time:*\\n{{ $('prepare for clickup').first().json.fields['Scheduled call time'] || 'TBD' }}\"\n      }\n    ]\n  },\n  {\n    \"type\": \"section\",\n    \"fields\": [\n      {\n        \"type\": \"mrkdwn\",\n        \"text\": \"*Lead Score:*\\n{{ $('prepare for clickup').first().json.fields['Lead Score'] || 'N/A' }}/100\"\n      },\n      {\n        \"type\": \"mrkdwn\",\n        \"text\": \"*Challenge:*\\n{{ $('prepare for clickup').first().json.fields['Challenge'] || 'Not specified' }}\"\n      }\n    ]\n  },\n  {\n    \"type\": \"section\",\n    \"text\": {\n      \"type\": \"mrkdwn\",\n      \"text\": \"*Goal:*\\n{{ $('prepare for clickup').first().json.fields['Goal'] || 'Not specified' }}\"\n    }\n  },\n  {\n    \"type\": \"section\",\n    \"text\": {\n      \"type\": \"mrkdwn\",\n      \"text\": \"*Quick Links:*\\n📁 <{{ $('prepare for clickup').first().json.fields['Drive Folder URL'] || '#' }}|Drive Folder> | 📊 <https://airtable.com/app1DHT7BsY4aQxM7/tblTX5xiD3vPWAh1S/{{ $('Search for Lead in Airtable').first().json.id }}|Airtable Record>\"\n    }\n  }\n]",
+        "text": "=🎉 *New Discovery Call Scheduled!*\n\n*Client:* {{ $('prepare for clickup').first().json.fields.Name }}\n*Email:* {{ $('prepare for clickup').first().json.fields.Email }}\n*Company:* {{ $('prepare for clickup').first().json.fields.Company }}\n*Title:* {{ $('prepare for clickup').first().json.fields.Title }}\n\n*Call Details:*\n📅 Date: {{ $('prepare for clickup').first().json.fields['Scheduled call date'] }}\n🕐 Time: {{ $('prepare for clickup').first().json.fields['Scheduled call time'] }}\n\n*Lead Information:*\n⭐ Score: {{ $('prepare for clickup').first().json.fields['Lead Score'] }}/100\n🎯 Challenge: {{ $('prepare for clickup').first().json.fields.Challenge }}\n🚀 Goal: {{ $('prepare for clickup').first().json.fields.Goal }}\n\n*Quick Links:*\n📁 Drive Folder: {{ $('prepare for clickup').first().json.fields['Drive Folder URL'] }}\n📊 Airtable: https://airtable.com/app1DHT7BsY4aQxM7/tblTX5xiD3vPWAh1S/{{ $('Search for Lead in Airtable').first().json.id }}",
+        "otherOptions": {
+          "mrkdwn": true
+        }
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [
+        5264,
+        -176
+      ],
+      "id": "de4c4df0-e660-43f7-9c1c-57243760c833",
+      "name": "Send a message",
+      "webhookId": "ff4d1262-4b48-4dc8-a9e2-833c0879d4a1",
+      "executeOnce": true,
+      "credentials": {
+        "slackApi": {
+          "id": "vjQS2KEBme1UvgFr",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get all the data we need from different nodes\nconst prepareClickUpData = $('prepare for clickup').first().json;\nconst fields = prepareClickUpData.fields || {};\nconst airtableId = $('Search for Lead in Airtable').first().json.id;\n\n// Extract the data with fallbacks\nconst leadName = fields['Name'] || 'Unknown';\nconst leadEmail = fields['Email'] || 'N/A';\nconst company = fields['Company'] || 'Unknown Company';\nconst title = fields['Title'] || 'N/A';\nconst callDate = fields['Scheduled call date'] || 'TBD';\nconst callTime = fields['Scheduled call time'] || 'TBD';\nconst leadScore = fields['Lead Score'] || 'N/A';\nconst challenge = fields['Challenge'] || 'Not specified';\nconst goal = fields['Goal'] || 'Not specified';\nconst folderUrl = fields['Drive Folder URL'] || '#';\n\n// Build Airtable URL\nconst airtableUrl = `https://airtable.com/app1DHT7BsY4aQxM7/tblTX5xiD3vPWAh1S/${airtableId}`;\n\n// Return formatted data for Slack\nreturn [{\n  json: {\n    leadName,\n    leadEmail,\n    company,\n    title,\n    callDate,\n    callTime,\n    leadScore,\n    challenge,\n    goal,\n    folderUrl,\n    airtableUrl\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5104,
+        -176
+      ],
+      "id": "80f9081f-2488-4a47-b1d0-29523c37f75a",
+      "name": "Prepare Slack Message"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "2b55b110-f1ec-4868-8fdb-2cfcefa97ff6",
+              "leftValue": "={{ $json.name }}",
+              "rightValue": "Assessments & Results",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.3,
+      "position": [
+        3792,
+        -272
+      ],
+      "id": "9fa530e6-8bc9-452c-93d9-54ca77f1df23",
+      "name": "Filter for Assessments Folder"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "6bc430e6-d3cd-4704-b9b4-5eaaf145c2a5",
+              "name": "assessmentsFolderId",
+              "value": "={{ $json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "875b9224-695f-4163-9d1d-0bf844078c38",
+              "name": "assessmentsFolderName",
+              "value": "={{ $json.name }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        4000,
+        -272
+      ],
+      "id": "d7032e46-6d4f-44f8-9c62-9f68b78c1446",
+      "name": "Store Assessments Folder ID"
+    }
+  ],
+  "pinData": {
+    "Gmail Trigger": [
+      {
+        "json": {
+          "id": "19c4799aae423e5a",
+          "threadId": "19c47913cb6d1ea9",
+          "snippet": "Wednesday February 11 at 4 am works for me On Tue, 10 Feb 2026, 1:41 pm Oluwanifemi Adefisayo, &lt;oluwanifemiadefisayo@gmail.com&gt; wrote: Wednesday February 11 at 4 am works for me On Tue, 10 Feb",
+          "payload": {
+            "mimeType": "multipart/alternative"
+          },
+          "sizeEstimate": 10239,
+          "historyId": "2283930",
+          "internalDate": "1770727765000",
+          "labels": [
+            {
+              "id": "INBOX",
+              "name": "INBOX"
+            },
+            {
+              "id": "IMPORTANT",
+              "name": "IMPORTANT"
+            },
+            {
+              "id": "CATEGORY_PERSONAL",
+              "name": "CATEGORY_PERSONAL"
+            },
+            {
+              "id": "UNREAD",
+              "name": "UNREAD"
+            }
+          ],
+          "From": "Oluwanifemi Adefisayo <oluwanifemiadefisayo@gmail.com>",
+          "Subject": "Re: Resources for your leadership journey",
+          "To": "adefisayooluwanifemi28@gmail.com"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "Filter for replies",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter for replies": {
+      "main": [
+        [
+          {
+            "node": "Extract Date/Time",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Date/Time": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get many events": {
+      "main": [
+        [
+          {
+            "node": "Analyze Availability",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Calculate Time with Correct Timezone",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate Time with Correct Timezone": {
+      "main": [
+        [
+          {
+            "node": "Get many events",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze Availability": {
+      "main": [
+        [
+          {
+            "node": "If Slot Available",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Slot Available": {
+      "main": [
+        [
+          {
+            "node": "Create Calendar Event",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Alternate Times Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Calendar Event": {
+      "main": [
+        [
+          {
+            "node": "Search for Lead in Airtable",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search for Lead in Airtable": {
+      "main": [
+        [
+          {
+            "node": "If Lead Found in Airtable",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Lead with Booking Details": {
+      "main": [
+        [
+          {
+            "node": "Create Client Folder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Lead Found in Airtable": {
+      "main": [
+        [
+          {
+            "node": "Update Lead with Booking Details",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create Lead in Airtable",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Client Folder": {
+      "main": [
+        [
+          {
+            "node": "Build Folder Link",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Subfolder List": {
+      "main": [
+        [
+          {
+            "node": "Create Subfolders (Loop)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Subfolders (Loop)": {
+      "main": [
+        [
+          {
+            "node": "Filter for Assessments Folder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Main Folder Link": {
+      "main": [
+        [
+          {
+            "node": "prepare for clickup",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Prepare for airtable",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Folder Link": {
+      "main": [
+        [
+          {
+            "node": "Prepare Subfolder List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Lead in Airtable": {
+      "main": [
+        [
+          {
+            "node": "Create Client Folder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Airtable with Drive folder URL": {
+      "main": [
+        [
+          {
+            "node": "Send Confirmation Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare ClickUp Task Data": {
+      "main": [
+        [
+          {
+            "node": "Create a task",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a task": {
+      "main": [
+        [
+          {
+            "node": "Prepare Slack Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "set client email": {
+      "main": [
+        [
+          {
+            "node": "set company",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "set company": {
+      "main": [
+        [
+          {
+            "node": "set drive folder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "prepare for clickup": {
+      "main": [
+        [
+          {
+            "node": "Prepare ClickUp Task Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare for airtable": {
+      "main": [
+        [
+          {
+            "node": "Update Airtable with Drive folder URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "set drive folder": {
+      "main": [
+        []
+      ]
+    },
+    "Prepare Slack Message": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter for Assessments Folder": {
+      "main": [
+        [
+          {
+            "node": "Store Assessments Folder ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Store Assessments Folder ID": {
+      "main": [
+        [
+          {
+            "node": "Get Main Folder Link",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "4b7161d5-5999-4198-a7cd-89c844e57677",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "8844a39d1e598f34f99619697ad4222bfb69d7001fcc9b2949e0ee61d46cd2a5"
+  },
+  "id": "VN39Swh3CtVSDrD1fTBwv",
+  "tags": []
+}

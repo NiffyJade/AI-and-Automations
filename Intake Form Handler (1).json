@@ -1,0 +1,1965 @@
+{
+  "name": "Intake Form Handler",
+  "nodes": [
+    {
+      "parameters": {
+        "formId": "TynKwfez",
+        "simplifyAnswers": false,
+        "onlyAnswers": false
+      },
+      "type": "n8n-nodes-base.typeformTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "f79a07e5-f1de-4601-98d8-52728a3f3246",
+      "name": "Typeform Trigger",
+      "webhookId": "b399684f-85b6-421e-902d-0524531eeaf5",
+      "credentials": {
+        "typeformApi": {
+          "id": "38SHEZ0HkWUcyOnw",
+          "name": "Typeform account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "da4e1805-4d01-4f79-8567-eae3b5ed4895",
+              "name": "name",
+              "value": "={{ $json.form_response.hidden.name }}",
+              "type": "string"
+            },
+            {
+              "id": "78b281ff-2481-4a0e-bb8d-68846c142415",
+              "name": "email",
+              "value": "={{ $json.form_response.hidden.email }}",
+              "type": "string"
+            },
+            {
+              "id": "a2f634e9-0841-4711-8d20-5975c1fa5eae",
+              "name": "company",
+              "value": "={{ $json.form_response.hidden.company }}",
+              "type": "string"
+            },
+            {
+              "id": "ee796628-2ec8-478e-ae61-643bb72c3d82",
+              "name": "challenges",
+              "value": "={{ $json.form_response.answers[0].text }}",
+              "type": "string"
+            },
+            {
+              "id": "01140c63-15a1-4da1-9aeb-3633839b8319",
+              "name": "successVision",
+              "value": "={{ $json.form_response.answers[1].text }}",
+              "type": "string"
+            },
+            {
+              "id": "4f528630-1053-49d7-8fa8-a8804204bf9c",
+              "name": "pastExperience",
+              "value": "={{ $json.form_response.answers[2].text }}",
+              "type": "string"
+            },
+            {
+              "id": "f648e8af-711f-448e-90f6-681fd9eed639",
+              "name": "focusAreas",
+              "value": "={{ $json.form_response.answers[3].choices.labels }}",
+              "type": "array"
+            },
+            {
+              "id": "e9f6e604-d2bf-415c-a138-8a76b7dd53ff",
+              "name": "coachingStyle",
+              "value": "={{ $json.form_response.answers[4].choice.label }}",
+              "type": "string"
+            },
+            {
+              "id": "8096f32a-9993-4565-9d23-fa893e0dfffd",
+              "name": "concerns",
+              "value": "={{ $json.form_response.answers[5].text }}",
+              "type": "string"
+            },
+            {
+              "id": "96e3cb2e-e13b-4264-9683-ef07f024de23",
+              "name": "referralSource",
+              "value": "={{ $json.form_response.answers[6].choice.label }}",
+              "type": "string"
+            },
+            {
+              "id": "fddd6626-e09b-4eb9-b1ae-8f15ab16fa39",
+              "name": "allResponses",
+              "value": "={{ JSON.stringify($json.form_response.answers, null, 2) }}",
+              "type": "string"
+            },
+            {
+              "id": "c15cea1e-d4e0-447c-a8b3-232e5bed2137",
+              "name": "formId",
+              "value": "={{ $json.form_response.form_id }}",
+              "type": "string"
+            },
+            {
+              "id": "2ca3e4fd-766d-4e25-99e5-95d57bb93064",
+              "name": "submittedAt",
+              "value": "={{ $json.form_response.submitted_at }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        208,
+        0
+      ],
+      "id": "24869370-5dff-4e15-b6a3-aaa659968c89",
+      "name": "Extract Intake Data"
+    },
+    {
+      "parameters": {
+        "html": "<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UTF-8\">\n  <style>\n    * {\n      margin: 0;\n      padding: 0;\n      box-sizing: border-box;\n    }\n    \n    body { \n      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;\n      margin: 0;\n      padding: 40px;\n      line-height: 1.6;\n      color: #1f2937;\n      background: #ffffff;\n    }\n    \n    .header { \n      border-bottom: 4px solid #3b82f6; \n      padding-bottom: 24px; \n      margin-bottom: 40px; \n    }\n    \n    .header h1 { \n      font-size: 32px;\n      color: #1e40af; \n      margin-bottom: 16px;\n      font-weight: 700;\n    }\n    \n    .header-grid {\n      display: grid;\n      grid-template-columns: 1fr 1fr;\n      gap: 20px;\n      margin-bottom: 20px;\n    }\n    \n    .header-item {\n      background: #f9fafb;\n      padding: 12px 16px;\n      border-radius: 6px;\n    }\n    \n    .header-item strong {\n      display: block;\n      color: #6b7280;\n      font-size: 12px;\n      text-transform: uppercase;\n      letter-spacing: 0.5px;\n      margin-bottom: 4px;\n    }\n    \n    .header-item span {\n      color: #1f2937;\n      font-size: 16px;\n      font-weight: 500;\n    }\n    \n    .call-banner {\n      background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);\n      border-left: 4px solid #f59e0b;\n      padding: 16px 20px;\n      border-radius: 6px;\n      margin-top: 20px;\n    }\n    \n    .call-banner p {\n      color: #92400e;\n      font-weight: 600;\n      margin: 0;\n    }\n    \n    .section { \n      margin-bottom: 40px; \n      page-break-inside: avoid;\n    }\n    \n    .section h2 { \n      color: #3b82f6; \n      font-size: 22px;\n      border-bottom: 2px solid #e5e7eb; \n      padding-bottom: 12px; \n      margin-bottom: 20px;\n      font-weight: 600;\n      display: flex;\n      align-items: center;\n      gap: 10px;\n    }\n    \n    .question { \n      font-weight: 600; \n      color: #374151; \n      margin-bottom: 12px;\n      font-size: 15px;\n    }\n    \n    .answer { \n      background: #f9fafb;\n      padding: 20px;\n      border-left: 4px solid #3b82f6;\n      border-radius: 4px;\n      margin-bottom: 20px;\n      white-space: pre-wrap;\n      line-height: 1.8;\n      color: #1f2937;\n    }\n    \n    .focus-areas {\n      display: flex;\n      flex-wrap: wrap;\n      gap: 12px;\n      margin-top: 16px;\n    }\n    \n    .focus-tag {\n      background: #dbeafe;\n      color: #1e40af;\n      padding: 10px 18px;\n      border-radius: 20px;\n      font-size: 14px;\n      font-weight: 600;\n      display: inline-block;\n    }\n    \n    .footer { \n      margin-top: 60px; \n      padding-top: 24px; \n      border-top: 2px solid #e5e7eb; \n      text-align: center;\n    }\n    \n    .footer p {\n      color: #6b7280; \n      font-size: 13px;\n      margin: 8px 0;\n    }\n    \n    .footer .confidential {\n      color: #ef4444;\n      font-weight: 600;\n      margin-top: 16px;\n    }\n    \n    @media print {\n      body {\n        padding: 20px;\n      }\n      .section {\n        page-break-inside: avoid;\n      }\n    }\n  </style>\n</head>\n<body>\n  <div class=\"header\">\n    <h1>🎯 Discovery Call Intake Form</h1>\n    \n    <div class=\"header-grid\">\n      <div class=\"header-item\">\n        <strong>Client Name</strong>\n        <span>{{ $('Get Client Drive Details').item.json.clientName }}</span>\n      </div>\n      <div class=\"header-item\">\n        <strong>Company</strong>\n        <span>{{ $('Get Client Drive Details').item.json.clientCompany }}</span>\n      </div>\n      <div class=\"header-item\">\n        <strong>Email</strong>\n        <span>{{ $('Get Client Drive Details').item.json.clientEmail }}</span>\n      </div>\n      <div class=\"header-item\">\n        <strong>Submitted</strong>\n        <span>{{ $now.format(\"DD\") }}</span>\n      </div>\n    </div>\n    \n    <div class=\"call-banner\">\n      <p>📅 Scheduled Discovery Call: {{ $('Get Client Drive Details').item.json.scheduledDate || 'TBD' }} at {{ $('Get Client Drive Details').item.json.scheduledTime || 'TBD' }} EST</p>\n    </div>\n  </div>\n\n  <div class=\"section\">\n    <h2>💼 Leadership Challenges</h2>\n    <p class=\"question\">What are your top 3 leadership challenges right now?</p>\n    <div class=\"answer\">{{ $('Extract Intake Data').item.json.challenges }}</div>\n  </div>\n\n  <div class=\"section\">\n    <h2>🎯 Success Vision</h2>\n    <p class=\"question\">What does success look like 6 months from now?</p>\n    <div class=\"answer\">{{ $('Extract Intake Data').item.json.successVision }}</div>\n  </div>\n\n  <div class=\"section\">\n    <h2>📚 Past Experience</h2>\n    <p class=\"question\">What's worked or not worked with past coaching or development?</p>\n    <div class=\"answer\">{{ $('Extract Intake Data').item.json.pastExperience || 'Not specified' }}</div>\n  </div>\n\n  <div class=\"section\">\n    <h2>🎓 Focus Areas</h2>\n    <p class=\"question\">Specific topics to focus on:</p>\n    <div class=\"focus-areas\">\n      {{\n        (() => {\n          const areas = $('Extract Intake Data').item.json.focusAreas;\n          if (Array.isArray(areas)) {\n            return areas.map(area => `<span class=\"focus-tag\">${area}</span>`).join('');\n          }\n          return '<span class=\"focus-tag\">Not specified</span>';\n        })()\n      }}\n    </div>\n  </div>\n\n  <div class=\"section\">\n    <h2>⚙️ Coaching Preferences</h2>\n    <p class=\"question\">Preferred coaching style:</p>\n    <div class=\"answer\">{{ $('Extract Intake Data').item.json.coachingStyle }}</div>\n  </div>\n\n  <div class=\"section\">\n    <h2>❓ Questions & Concerns</h2>\n    <div class=\"answer\">{{ $('Extract Intake Data').item.json.concerns || 'None specified' }}</div>\n  </div>\n  \n  <div class=\"section\">\n    <h2>📊 Referral Source</h2>\n    <div class=\"answer\">{{ $('Extract Intake Data').item.json.referralSource }}</div>\n  </div>\n\n  <div class=\"footer\">\n    <p>Generated on {{ $now.format('MMMM DD, YYYY [at] h:mm A') }}</p>\n    <p>Momentum Coaching | Leadership Development</p>\n    <p class=\"confidential\">⚠️ CONFIDENTIAL - For Internal Use Only</p>\n  </div>\n</body>\n</html>"
+      },
+      "type": "n8n-nodes-base.html",
+      "typeVersion": 1.2,
+      "position": [
+        1248,
+        0
+      ],
+      "id": "7eab14d5-d648-446e-839b-930aa39547dc",
+      "name": "Create HTML Template"
+    },
+    {
+      "parameters": {
+        "html_content": "={{ $json.html }}",
+        "output_format": "file"
+      },
+      "type": "n8n-nodes-htmlcsstopdf.htmlcsstopdf",
+      "typeVersion": 1,
+      "position": [
+        1456,
+        0
+      ],
+      "id": "7bfe238d-571e-4e95-828f-404f040f3a21",
+      "name": "Convert HTML to PDF",
+      "credentials": {
+        "htmlcsstopdfApi": {
+          "id": "w1i08iXTVg9jsWXV",
+          "name": "HTML to PDF account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "2d7dc071-012a-45d1-ad3c-58c65f095ff9",
+              "name": "driveFolderId",
+              "value": "={{ $json['Drive Folder ID'] }}",
+              "type": "string"
+            },
+            {
+              "id": "fea06c5c-fc90-4a5b-9190-5f46f65e5775",
+              "name": "clientName",
+              "value": "={{ $json.Name }}",
+              "type": "string"
+            },
+            {
+              "id": "a5db9a99-69b2-49a6-bcb7-0c42a8dec9d5",
+              "name": "clientEmail",
+              "value": "={{ $json.Email }}",
+              "type": "string"
+            },
+            {
+              "id": "65614ea1-d9f3-410e-9f3d-3185ec2ef151",
+              "name": "clientCompany",
+              "value": "={{ $json.Company }}",
+              "type": "string"
+            },
+            {
+              "id": "c509d2ce-b2dc-4323-8125-f61dbd7f14be",
+              "name": "driveFolderUrl",
+              "value": "={{ $json['Drive Folder URL'] }}",
+              "type": "string"
+            },
+            {
+              "id": "8b4a5f52-6fc8-4cc7-ad78-1ce3344b9212",
+              "name": "airtableRecordId",
+              "value": "={{ $json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "6afc671f-0f95-4b6f-a34f-0692fddf90da",
+              "name": "scheduledDate",
+              "value": "={{ $json['Scheduled call date'] }}",
+              "type": "string"
+            },
+            {
+              "id": "443021a1-fe6d-4583-aaa4-f631f356c71d",
+              "name": "scheduledTime",
+              "value": "={{ $json['Scheduled call time'] }}",
+              "type": "string"
+            },
+            {
+              "id": "b82583a7-ac0d-4764-bc1f-a4849c4feb67",
+              "name": "zoomLink",
+              "value": "={{ $json['Zoom Link'] }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        624,
+        0
+      ],
+      "id": "410afa47-7de6-4c9d-b148-079eb74ab00d",
+      "name": "Get Client Drive Details"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "a8960368-1884-42c5-9afb-06f1b06dad6d",
+              "leftValue": "={{ $('Get Client Drive Details').item.json.driveFolderId }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        832,
+        0
+      ],
+      "id": "29063260-8b1f-4cf6-a6f3-f2da29cfac01",
+      "name": "Has Drive Folder?"
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "app1DHT7BsY4aQxM7",
+          "mode": "list",
+          "cachedResultName": "Momentum Coaching CRM",
+          "cachedResultUrl": "https://airtable.com/app1DHT7BsY4aQxM7"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblTX5xiD3vPWAh1S",
+          "mode": "list",
+          "cachedResultName": "Leads & Clients",
+          "cachedResultUrl": "https://airtable.com/app1DHT7BsY4aQxM7/tblTX5xiD3vPWAh1S"
+        },
+        "filterByFormula": "={Email} = '{{ $('Extract Intake Data').item.json.email }}'",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        416,
+        0
+      ],
+      "id": "d696f155-70c3-423b-8d41-963d572d7c1d",
+      "name": "Search for Lead in Airtable",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "mDfI7MvlHh9goNBw",
+          "name": "oluwanifemiadefisayo"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "base": {
+          "__rl": true,
+          "value": "app1DHT7BsY4aQxM7",
+          "mode": "list",
+          "cachedResultName": "Momentum Coaching CRM",
+          "cachedResultUrl": "https://airtable.com/app1DHT7BsY4aQxM7"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblTX5xiD3vPWAh1S",
+          "mode": "list",
+          "cachedResultName": "Leads & Clients",
+          "cachedResultUrl": "https://airtable.com/app1DHT7BsY4aQxM7/tblTX5xiD3vPWAh1S"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Last Contact": "={{ $now.format('yyyy-MM-dd') }}",
+            "id": "={{ $('Get Client Drive Details').item.json.airtableRecordId }}",
+            "Intake Responses": "={{ $('Extract Intake Data').item.json.allResponses }}",
+            "Status": "Intake Complete"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": false
+            },
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Phone",
+              "displayName": "Phone",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Company",
+              "displayName": "Company",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Title",
+              "displayName": "Title",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Company Size",
+              "displayName": "Company Size",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Budget Range",
+              "displayName": "Budget Range",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "<$2K",
+                  "value": "<$2K"
+                },
+                {
+                  "name": "$2-5K",
+                  "value": "$2-5K"
+                },
+                {
+                  "name": "$5-10K",
+                  "value": "$5-10K"
+                },
+                {
+                  "name": "$10K+",
+                  "value": "$10K+"
+                }
+              ],
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Timeline",
+              "displayName": "Timeline",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "ASAP",
+                  "value": "ASAP"
+                },
+                {
+                  "name": "1-2 months",
+                  "value": "1-2 months"
+                },
+                {
+                  "name": "3+ months",
+                  "value": "3+ months"
+                },
+                {
+                  "name": "exploring",
+                  "value": "exploring"
+                }
+              ],
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Lead Score",
+              "displayName": "Lead Score",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "New",
+                  "value": "New"
+                },
+                {
+                  "name": "Contacted",
+                  "value": "Contacted"
+                },
+                {
+                  "name": "Call Scheduled",
+                  "value": "Call Scheduled"
+                },
+                {
+                  "name": "Proposal Sent",
+                  "value": "Proposal Sent"
+                },
+                {
+                  "name": "Client",
+                  "value": "Client"
+                },
+                {
+                  "name": "Closed Lost",
+                  "value": "Closed Lost"
+                },
+                {
+                  "name": "Intake Complete",
+                  "value": "Intake Complete"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Lead Source",
+              "displayName": "Lead Source",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Challenge",
+              "displayName": "Challenge",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Goal",
+              "displayName": "Goal",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Tags",
+              "displayName": "Tags",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "array",
+              "options": [
+                {
+                  "name": "Hot Lead",
+                  "value": "Hot Lead"
+                },
+                {
+                  "name": "Warm Lead",
+                  "value": "Warm Lead"
+                },
+                {
+                  "name": "Nurture",
+                  "value": "Nurture"
+                }
+              ],
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Drive Folder URL",
+              "displayName": "Drive Folder URL",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Created Date",
+              "displayName": "Created Date",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            },
+            {
+              "id": "Last Contact",
+              "displayName": "Last Contact",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Next Action",
+              "displayName": "Next Action",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Scheduled call date",
+              "displayName": "Scheduled call date",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Scheduled call time",
+              "displayName": "Scheduled call time",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Calendar event Id",
+              "displayName": "Calendar event Id",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Intake Responses",
+              "displayName": "Intake Responses",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Drive Folder ID",
+              "displayName": "Drive Folder ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Zoom Link",
+              "displayName": "Zoom Link",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        1040,
+        0
+      ],
+      "id": "adf22a70-bb69-4cfb-ba62-359c7df38ff3",
+      "name": "Update Airtable - Intake Complete",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "mDfI7MvlHh9goNBw",
+          "name": "oluwanifemiadefisayo"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "name": "=Intake - {{ $('Extract Intake Data').item.json.name }} - {{ $now.format('yyyy-MM-dd') }}.pdf",
+        "driveId": {
+          "__rl": true,
+          "value": "My Drive",
+          "mode": "list",
+          "cachedResultName": "My Drive",
+          "cachedResultUrl": "https://drive.google.com/drive/my-drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "={{ $('Get Client Drive Details').item.json.driveFolderId }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        1664,
+        0
+      ],
+      "id": "c28e5ccb-6b73-438b-8cec-621c0bf60abf",
+      "name": "Upload Intake PDF",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "ptdp1Lai3uSRWGIB",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "fd6f63ff-2d3c-4435-8741-cc294852dabf",
+              "name": "pdfUrl",
+              "value": "={{ $json.webViewLink }}",
+              "type": "string"
+            },
+            {
+              "id": "7f89b70a-8321-4111-b5d8-7c87c15e3e58",
+              "name": "pdfId",
+              "value": "={{ $json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "0cf06a10-c851-4148-bfda-fe23d62c92ea",
+              "name": "pdfName",
+              "value": "={{ $json.name }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1872,
+        0
+      ],
+      "id": "fbf15993-1112-48e7-b0b8-553ffd5d16fa",
+      "name": "Get PDF Details"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "base": {
+          "__rl": true,
+          "value": "app1DHT7BsY4aQxM7",
+          "mode": "list",
+          "cachedResultName": "Momentum Coaching CRM",
+          "cachedResultUrl": "https://airtable.com/app1DHT7BsY4aQxM7"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblTX5xiD3vPWAh1S",
+          "mode": "list",
+          "cachedResultName": "Leads & Clients",
+          "cachedResultUrl": "https://airtable.com/app1DHT7BsY4aQxM7/tblTX5xiD3vPWAh1S"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $('Get Client Drive Details').item.json.airtableRecordId }}",
+            "Intake PDF URL": "={{ $json.pdfUrl }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": false
+            },
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Phone",
+              "displayName": "Phone",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Company",
+              "displayName": "Company",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Title",
+              "displayName": "Title",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Company Size",
+              "displayName": "Company Size",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Budget Range",
+              "displayName": "Budget Range",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "<$2K",
+                  "value": "<$2K"
+                },
+                {
+                  "name": "$2-5K",
+                  "value": "$2-5K"
+                },
+                {
+                  "name": "$5-10K",
+                  "value": "$5-10K"
+                },
+                {
+                  "name": "$10K+",
+                  "value": "$10K+"
+                }
+              ],
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Timeline",
+              "displayName": "Timeline",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "ASAP",
+                  "value": "ASAP"
+                },
+                {
+                  "name": "1-2 months",
+                  "value": "1-2 months"
+                },
+                {
+                  "name": "3+ months",
+                  "value": "3+ months"
+                },
+                {
+                  "name": "exploring",
+                  "value": "exploring"
+                }
+              ],
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Lead Score",
+              "displayName": "Lead Score",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "New",
+                  "value": "New"
+                },
+                {
+                  "name": "Contacted",
+                  "value": "Contacted"
+                },
+                {
+                  "name": "Call Scheduled",
+                  "value": "Call Scheduled"
+                },
+                {
+                  "name": "Proposal Sent",
+                  "value": "Proposal Sent"
+                },
+                {
+                  "name": "Client",
+                  "value": "Client"
+                },
+                {
+                  "name": "Closed Lost",
+                  "value": "Closed Lost"
+                },
+                {
+                  "name": "Intake Complete",
+                  "value": "Intake Complete"
+                }
+              ],
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Lead Source",
+              "displayName": "Lead Source",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Challenge",
+              "displayName": "Challenge",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Goal",
+              "displayName": "Goal",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Tags",
+              "displayName": "Tags",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "array",
+              "options": [
+                {
+                  "name": "Hot Lead",
+                  "value": "Hot Lead"
+                },
+                {
+                  "name": "Warm Lead",
+                  "value": "Warm Lead"
+                },
+                {
+                  "name": "Nurture",
+                  "value": "Nurture"
+                }
+              ],
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Drive Folder URL",
+              "displayName": "Drive Folder URL",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Created Date",
+              "displayName": "Created Date",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            },
+            {
+              "id": "Last Contact",
+              "displayName": "Last Contact",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Next Action",
+              "displayName": "Next Action",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Scheduled call date",
+              "displayName": "Scheduled call date",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Scheduled call time",
+              "displayName": "Scheduled call time",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Calendar event Id",
+              "displayName": "Calendar event Id",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Intake Responses",
+              "displayName": "Intake Responses",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Drive Folder ID",
+              "displayName": "Drive Folder ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Zoom Link",
+              "displayName": "Zoom Link",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Intake PDF URL",
+              "displayName": "Intake PDF URL",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        2080,
+        0
+      ],
+      "id": "ac089bd1-edf3-49b0-b235-a2f3749ad717",
+      "name": "Save PDF URL to Airtable",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "mDfI7MvlHh9goNBw",
+          "name": "oluwanifemiadefisayo"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "team": "9012970158",
+        "space": "90126356128",
+        "folderless": true,
+        "list": "901215691219",
+        "filters": {}
+      },
+      "type": "n8n-nodes-base.clickUp",
+      "typeVersion": 1,
+      "position": [
+        2288,
+        0
+      ],
+      "id": "7999e116-5907-4823-9b4b-be0e2061c415",
+      "name": "Get many tasks",
+      "credentials": {
+        "clickUpApi": {
+          "id": "7GynTMX6diP1XBlM",
+          "name": "Unnamed credential"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get all tasks\nconst allTasks = $input.all();\n\n// Get client name\nconst clientName = $('Get Client Drive Details').item.json.clientName;\n\n// Find specific tasks for this client\nconst reviewIntakeTask = allTasks.find(item => \n  item.json.name && item.json.name.includes(`1. Review Intake - ${clientName}`)\n);\n\nconst discoveryCallTask = allTasks.find(item => \n  item.json.name && item.json.name.includes(`3. Discovery Call - ${clientName}`)\n);\n\n// Return task IDs or null\nreturn [{\n  json: {\n    reviewIntakeTaskId: reviewIntakeTask?.json?.id || null,\n    reviewIntakeTaskName: reviewIntakeTask?.json?.name || null,\n    discoveryCallTaskId: discoveryCallTask?.json?.id || null,\n    discoveryCallTaskName: discoveryCallTask?.json?.name || null,\n    clientName: clientName,\n    bothTasksFound: !!(reviewIntakeTask && discoveryCallTask)\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2496,
+        0
+      ],
+      "id": "ebf262a1-500a-4762-90a2-c628e63cc94d",
+      "name": "Find Client Tasks"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "0d89cb6c-e27e-48f3-a076-9e9e26f77dea",
+              "leftValue": "={{ $json.bothTasksFound }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2704,
+        0
+      ],
+      "id": "590da60f-e707-4789-99b3-0cc54feafee9",
+      "name": "Tasks Exist?"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "id": "={{ $('Find Client Tasks').item.json.reviewIntakeTaskId }}",
+        "updateFields": {
+          "status": "Complete"
+        }
+      },
+      "type": "n8n-nodes-base.clickUp",
+      "typeVersion": 1,
+      "position": [
+        2912,
+        -96
+      ],
+      "id": "dcc772c6-2c61-4cc7-a4a5-23b37c1fec15",
+      "name": "Mark Review Intake Complete",
+      "credentials": {
+        "clickUpApi": {
+          "id": "7GynTMX6diP1XBlM",
+          "name": "Unnamed credential"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "comment",
+        "commentOn": "task",
+        "id": "={{ $('Find Client Tasks').item.json.reviewIntakeTaskId }}",
+        "commentText": "=✅ Intake form completed!  **Top 3 Challenges:** {{ $('Extract Intake Data').first().json.challenges }}  **Success Vision:** {{ $('Extract Intake Data').first().json.successVision }}  **Focus Areas:** {{ $('Extract Intake Data').first().json.focusAreas.join(', ') }}  **Coaching Style Preference:** {{ $('Extract Intake Data').first().json.coachingStyle }}  📄 **Full Intake PDF:** {{ $('Get PDF Details').first().json.pdfUrl }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.clickUp",
+      "typeVersion": 1,
+      "position": [
+        3120,
+        -96
+      ],
+      "id": "5dd2c8cc-c4d9-4243-b38c-b487d5cc2eae",
+      "name": "Add Intake Summary Comment",
+      "credentials": {
+        "clickUpApi": {
+          "id": "7GynTMX6diP1XBlM",
+          "name": "Unnamed credential"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "id": "={{ $('Find Client Tasks').item.json.discoveryCallTaskId }}",
+        "updateFields": {
+          "content": "=**📋 INTAKE HIGHLIGHTS**  **Client:** {{ $('Get Client Drive Details').first().json.clientName }} **Company:** {{ $('Get Client Drive Details').first().json.clientCompany }} **Email:** {{ $('Get Client Drive Details').first().json.clientEmail }}  ---  **🎯 Top Challenges:** {{ $('Extract Intake Data').first().json.challenges }}  **💡 Success Vision (6 months):** {{ $('Extract Intake Data').first().json.successVision }}  **📚 Focus Areas:** {{ $('Extract Intake Data').first().json.focusAreas.join(', ') }}  **⚙️ Preferred Coaching Style:** {{ $('Extract Intake Data').first().json.coachingStyle }}  **❓ Questions/Concerns:** {{ $('Extract Intake Data').first().json.concerns || 'None' }}  ---  **📄 Resources:** - [View Intake PDF]({{ $('Get PDF Details').first().json.pdfUrl }}) - [Client Drive Folder]({{ $('Get Client Drive Details').first().json.driveFolderUrl }})  ---  **📞 Call Details:** 🗓️ {{ $('Get Client Drive Details').first().json.scheduledDate }} at {{ $('Get Client Drive Details').first().json.scheduledTime }} EST 🔗 {{ $('Get Client Drive Details').first().json.zoomLink }}"
+        }
+      },
+      "type": "n8n-nodes-base.clickUp",
+      "typeVersion": 1,
+      "position": [
+        3312,
+        -112
+      ],
+      "id": "3257ab83-1dea-4ad2-95d3-31ed3cc8e7a0",
+      "name": "Update Discovery Call Task",
+      "credentials": {
+        "clickUpApi": {
+          "id": "7GynTMX6diP1XBlM",
+          "name": "Unnamed credential"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a9a1acb8-a4cb-4046-b278-065c7521fd52",
+              "name": "clientName",
+              "value": "={{ $('Get Client Drive Details').first().json.clientName }}",
+              "type": "string"
+            },
+            {
+              "id": "e01a0d3e-7db4-42df-a4ba-c42c076468a4",
+              "name": "clientEmail",
+              "value": "={{ $('Get Client Drive Details').first().json.clientEmail }}",
+              "type": "string"
+            },
+            {
+              "id": "f37106c9-6233-46e2-874c-2c2f9b931c35",
+              "name": "callDate",
+              "value": "={{ $('Get Client Drive Details').first().json.scheduledDate }}",
+              "type": "string"
+            },
+            {
+              "id": "e3cd8ccb-88b5-4a26-8aac-f797382afd21",
+              "name": "callTime",
+              "value": "={{ $('Get Client Drive Details').first().json.scheduledTime }}",
+              "type": "string"
+            },
+            {
+              "id": "cf397897-46e2-4a44-84b8-a9061a614719",
+              "name": "zoomLink",
+              "value": "={{ $('Get Client Drive Details').first().json.zoomLink }}",
+              "type": "string"
+            },
+            {
+              "id": "30fc98be-6bdf-421a-b494-630707f57abd",
+              "name": "focusArea1",
+              "value": "={{ $('Extract Intake Data').first().json.focusAreas[0] }}",
+              "type": "string"
+            },
+            {
+              "id": "7626c76b-eca5-4ea6-9729-d6ee6bac807d",
+              "name": "focusArea2",
+              "value": "={{ $('Extract Intake Data').first().json.focusAreas[1] }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        3520,
+        -112
+      ],
+      "id": "30cd8421-6224-49bd-9bca-b8df9b628f3c",
+      "name": "Prepare Email Data"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.clientEmail }}",
+        "subject": "Thanks for completing the intake form!",
+        "message": "=<!DOCTYPE html> <html> <head>   <style>     body {       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;       line-height: 1.6;       color: #333;       max-width: 600px;       margin: 0 auto;       padding: 20px;     }     .banner {       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);       color: white;       padding: 30px;       border-radius: 8px;       margin-bottom: 30px;       text-align: center;     }     .banner h1 {       margin: 0;       font-size: 24px;     }     .content {       background: #ffffff;       padding: 30px;       border: 1px solid #e5e7eb;       border-radius: 8px;     }     .call-details {       background: #f0f9ff;       border-left: 4px solid #3b82f6;       padding: 20px;       margin: 20px 0;       border-radius: 4px;     }     .call-details p {       margin: 8px 0;     }     .call-details strong {       color: #1e40af;     }     .focus-areas {       background: #fef3c7;       border-left: 4px solid #f59e0b;       padding: 15px;       margin: 20px 0;       border-radius: 4px;     }     .footer {       text-align: center;       margin-top: 30px;       padding-top: 20px;       border-top: 1px solid #e5e7eb;       color: #6b7280;       font-size: 14px;     }     a {       color: #3b82f6;       text-decoration: none;     }     a:hover {       text-decoration: underline;     }   </style> </head> <body>   <div class=\"banner\">     <h1>✅ Intake Form Received!</h1>   </div>      <div class=\"content\">     <p>Hi {{ $json.clientName }},</p>      <p>Perfect! I've received your intake form and I'm really looking forward to our conversation.</p>      <div class=\"call-details\">       <p><strong>📅 Our Call Details:</strong></p>       <p><strong>Date:</strong> {{ $json.callDate || 'To be scheduled' }}</p>       <p><strong>Time:</strong> {{ $json.callTime || 'To be scheduled' }} EST</p>       <p><strong>Zoom Link:</strong> <a href=\"{{ $json.zoomLink }}\">Click here to join</a></p>     </div>      <p>I'll use the next few days to review your responses and prepare some specific questions about <strong>{{ $json.focusArea1 }}</strong>{{ $json.focusArea2 ? ' and <strong>' + $json.focusArea2 + '</strong>' : '' }}.</p>      <div class=\"focus-areas\">       <p><strong>💡 Quick Tip:</strong> Between now and our call, jot down any additional thoughts or examples related to the challenges you mentioned. This will help us dive deeper during our conversation.</p>     </div>      <p>If you think of any additional questions or topics you'd like to discuss before our call, feel free to reply to this email anytime.</p>      <p>Looking forward to connecting!</p>      <p style=\"margin-top: 30px;\">       Best regards,<br>       <strong>NiffyJade</strong><br>       Founder, Momentum Coaching<br>       <a href=\"mailto:adefisayooluwanifemi28@gmail.com\">adefisayooluwanifemi28.com</a>     </p>   </div>    <div class=\"footer\">     <p>This email was sent because you completed an intake form for your upcoming discovery call.</p>     <p>Need to reschedule? Just reply to this email.</p>   </div> </body> </html>",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        3728,
+        -112
+      ],
+      "id": "93c2a63e-7547-48bd-948b-ee9b1ca291a8",
+      "name": "Send Confirmation Email",
+      "webhookId": "f5b04c2a-4f3f-41b8-b443-3098b3e6863f",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "ErHnsutDlpSGS3Sj",
+          "name": "adefisayooluwanifemi28 gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "oluwanifemiadefisayo28@gmail.com",
+        "subject": "=⚠️ Intake completed but ClickUp tasks not found - {{ $('Get Client Drive Details').item.json.clientName }}",
+        "message": "=``` Client {{ $('Get Client Drive Details').item.json.clientName }} completed their intake form, but their ClickUp tasks were not found.  Please create tasks manually or check the Schedule Confirmation Handler workflow.  Client Details: - Name: {{ $('Get Client Drive Details').item.json.clientName }} - Email: {{ $('Get Client Drive Details').item.json.clientEmail }} - Company: {{ $('Get Client Drive Details').item.json.clientCompany }}  Intake PDF: {{ $('Get PDF Details').item.json.pdfUrl }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        2912,
+        96
+      ],
+      "id": "aacda3e4-5bc8-4b8d-b440-0b8acf4d79d4",
+      "name": "Notify - Tasks Not Found",
+      "webhookId": "f83af0a7-e759-492e-89b7-d561e571eb3b",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "ErHnsutDlpSGS3Sj",
+          "name": "adefisayooluwanifemi28 gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "oluwanifemiadefisayo28@gmail.com",
+        "subject": "=⚠️ Intake completed but no Drive folder - {{ $('Get Client Drive Details').item.json.clientName }}",
+        "message": "=``` Client {{ $('Get Client Drive Details').item.json.clientName }} completed their intake form, but they don't have a Drive folder set up.  Please run the Schedule Confirmation Handler or create their folder manually.  Client Details: - Name: {{ $('Get Client Drive Details').item.json.clientName }} - Email: {{ $('Get Client Drive Details').item.json.clientEmail }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1088,
+        144
+      ],
+      "id": "1e32a8ff-cf06-4522-b9a8-e71cbf778bcf",
+      "name": "Send a message",
+      "webhookId": "f917634d-1cd7-48a4-ada2-184cf7204ba0",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "ErHnsutDlpSGS3Sj",
+          "name": "adefisayooluwanifemi28 gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {
+    "Typeform Trigger": [
+      {
+        "json": {
+          "event_id": "01KH6F7V4B0MY6S6S0F1EFP8BD",
+          "event_type": "form_response",
+          "form_response": {
+            "form_id": "TynKwfez",
+            "token": "vgxp13qypcsihtbcp7ydr1vgxp1ddaq8",
+            "response_url": "https://admin.typeform.com/form/TynKwfez/results?responseId=vgxp13qypcsihtbcp7ydr1vgxp1ddaq8#responses",
+            "landed_at": "2026-02-11T13:44:13Z",
+            "submitted_at": "2026-02-11T13:46:20Z",
+            "hidden": {
+              "company": "Nifemi Ai Agency",
+              "email": "oluwanifemiadefisayo@gmail.com",
+              "name": "Adetola Adefisayo"
+            },
+            "definition": {
+              "id": "TynKwfez",
+              "title": "Discovery Call Intake Form",
+              "fields": [
+                {
+                  "id": "XaWfnCuNDPSB",
+                  "ref": "725f4999-90c6-4da3-b7dd-037e244fb035",
+                  "type": "long_text",
+                  "title": "What are your top 3 leadership challenges right now?",
+                  "properties": {}
+                },
+                {
+                  "id": "Rzhgbc9ynkvu",
+                  "ref": "b433fb5d-08e7-4c47-96cb-6fb5158bb8cb",
+                  "type": "long_text",
+                  "title": "What does success look like 6 months from now?",
+                  "properties": {}
+                },
+                {
+                  "id": "qjwfx6vzXM4a",
+                  "ref": "23604b40-937f-41be-afe8-604b86efc1a8",
+                  "type": "long_text",
+                  "title": "What's worked or not worked with past coaching or development?",
+                  "properties": {}
+                },
+                {
+                  "id": "4pg0KIBsvQk8",
+                  "ref": "0b80094a-f7a1-4e00-a57b-ea467bce7865",
+                  "type": "multiple_choice",
+                  "title": "What specific topics do you want to focus on?",
+                  "properties": {},
+                  "allow_multiple_selections": true,
+                  "choices": [
+                    {
+                      "id": "OR9Yfa0U0qF5",
+                      "ref": "6329f550-7172-40c8-937e-ccad7e461146",
+                      "label": "Team building & delegation"
+                    },
+                    {
+                      "id": "1I7opb1rLene",
+                      "ref": "77e89467-a08c-4f38-a57e-536124480232",
+                      "label": "Executive presence & communication"
+                    },
+                    {
+                      "id": "m2notrCaqCV1",
+                      "ref": "9cec7a5b-1275-441d-81b0-1ce9ceff7df9",
+                      "label": "Strategic thinking"
+                    },
+                    {
+                      "id": "zocVfZvLpLb3",
+                      "ref": "0af3bc3c-b123-4451-ab2e-d25be5c8e794",
+                      "label": "Conflict management"
+                    },
+                    {
+                      "id": "HaNbLgxejCU1",
+                      "ref": "53c2153a-96e4-4162-bdda-ae76eb8507db",
+                      "label": "Career transition"
+                    },
+                    {
+                      "id": "Swh0vK1MBcX7",
+                      "ref": "ad415d42-f0a6-4d72-bc33-72a5c7ec754e",
+                      "label": "Work-life integration"
+                    },
+                    {
+                      "id": "RG0JQLyDAF6O",
+                      "ref": "23fbbf83-ec46-4cab-ab1d-e1d9ba23b156",
+                      "label": "Other: ___"
+                    }
+                  ]
+                },
+                {
+                  "id": "0gzXqKcCSKr4",
+                  "ref": "9a3ca8d8-f79b-46b2-9720-f0a8caede991",
+                  "type": "multiple_choice",
+                  "title": "Preferred coaching style",
+                  "properties": {},
+                  "choices": [
+                    {
+                      "id": "qCLouDSRILPb",
+                      "ref": "48a86570-4d84-459e-acaf-437bd9beeb69",
+                      "label": "More directive (tell me what to do)"
+                    },
+                    {
+                      "id": "mxqBLIcgGtBw",
+                      "ref": "7384447d-dd91-4bba-a7c3-71a49b65e308",
+                      "label": "More exploratory (help me figure it out)"
+                    },
+                    {
+                      "id": "V76MC68uZXEd",
+                      "ref": "1dd7dc7d-9131-4115-8b90-c616f30d0392",
+                      "label": "Balanced approach"
+                    }
+                  ]
+                },
+                {
+                  "id": "yrKpk48v5EJb",
+                  "ref": "7d27aad5-4fec-444b-8cf9-43e5808db423",
+                  "type": "long_text",
+                  "title": "Any concerns or questions before our call?",
+                  "properties": {}
+                },
+                {
+                  "id": "yon9f4TxYWlI",
+                  "ref": "7a29c0d7-6fd6-4774-86fc-344c6e87ac1b",
+                  "type": "dropdown",
+                  "title": "How did you hear about Momentum Coaching?",
+                  "properties": {},
+                  "choices": [
+                    {
+                      "id": "SZ2JBY5ldvBc",
+                      "ref": "5b0190ca-54cb-476f-8217-4df4ec09d4a7",
+                      "label": "Referred by a colleague"
+                    },
+                    {
+                      "id": "rhrWv3HuR8Kt",
+                      "ref": "0013395a-e1de-4d15-be06-d3d6bbe2868a",
+                      "label": "LinkedIn"
+                    },
+                    {
+                      "id": "1XGkyvuEUx1P",
+                      "ref": "c301f573-71b2-47bd-903a-51cce20986e3",
+                      "label": "Company event or workshop"
+                    },
+                    {
+                      "id": "U9CZBQmOq4e4",
+                      "ref": "d94dc22d-70b1-4ab0-8cad-79c73b7ef426",
+                      "label": "Google search"
+                    },
+                    {
+                      "id": "KeVybRzgOEr1",
+                      "ref": "65c0a9cc-bcc4-4e99-9314-61041a5d4565",
+                      "label": "Newsletter or email"
+                    },
+                    {
+                      "id": "BwaJlBwuysSp",
+                      "ref": "1cc1daee-9c78-4099-8af4-3888d1d672a2",
+                      "label": "Other"
+                    }
+                  ]
+                }
+              ],
+              "endings": [
+                {
+                  "id": "DefaultTyScreen",
+                  "ref": "default_tys",
+                  "title": "Thanks for completing this typeform\nNow *create your own* — it's free, easy, & beautiful",
+                  "type": "thankyou_screen",
+                  "properties": {
+                    "button_text": "Create a *typeform*",
+                    "show_button": true,
+                    "share_icons": false,
+                    "button_mode": "default_redirect"
+                  },
+                  "attachment": {
+                    "type": "image",
+                    "href": "https://public-assets.typeform.com/public/admin/2dpnUBBkz2VN.gif"
+                  }
+                }
+              ],
+              "settings": {
+                "partial_responses_to_all_integrations": true
+              }
+            },
+            "answers": [
+              {
+                "type": "text",
+                "text": "1. Leadership\n2. Emotional Intelligence\n3. Recruitment",
+                "answer_url": "https://admin.typeform.com/form/TynKwfez/results?responseId=vgxp13qypcsihtbcp7ydr1vgxp1ddaq8&fieldId=XaWfnCuNDPSB#responses",
+                "field": {
+                  "id": "XaWfnCuNDPSB",
+                  "type": "long_text",
+                  "ref": "725f4999-90c6-4da3-b7dd-037e244fb035"
+                }
+              },
+              {
+                "type": "text",
+                "text": "i should be able to manage employee well in the aspect of emotional intelligence",
+                "answer_url": "https://admin.typeform.com/form/TynKwfez/results?responseId=vgxp13qypcsihtbcp7ydr1vgxp1ddaq8&fieldId=Rzhgbc9ynkvu#responses",
+                "field": {
+                  "id": "Rzhgbc9ynkvu",
+                  "type": "long_text",
+                  "ref": "b433fb5d-08e7-4c47-96cb-6fb5158bb8cb"
+                }
+              },
+              {
+                "type": "text",
+                "text": "none",
+                "answer_url": "https://admin.typeform.com/form/TynKwfez/results?responseId=vgxp13qypcsihtbcp7ydr1vgxp1ddaq8&fieldId=qjwfx6vzXM4a#responses",
+                "field": {
+                  "id": "qjwfx6vzXM4a",
+                  "type": "long_text",
+                  "ref": "23604b40-937f-41be-afe8-604b86efc1a8"
+                }
+              },
+              {
+                "type": "choices",
+                "answer_url": "https://admin.typeform.com/form/TynKwfez/results?responseId=vgxp13qypcsihtbcp7ydr1vgxp1ddaq8&fieldId=4pg0KIBsvQk8#responses",
+                "choices": {
+                  "ids": [
+                    "OR9Yfa0U0qF5",
+                    "m2notrCaqCV1",
+                    "HaNbLgxejCU1",
+                    "Swh0vK1MBcX7"
+                  ],
+                  "labels": [
+                    "Team building & delegation",
+                    "Strategic thinking",
+                    "Career transition",
+                    "Work-life integration"
+                  ],
+                  "refs": [
+                    "6329f550-7172-40c8-937e-ccad7e461146",
+                    "9cec7a5b-1275-441d-81b0-1ce9ceff7df9",
+                    "53c2153a-96e4-4162-bdda-ae76eb8507db",
+                    "ad415d42-f0a6-4d72-bc33-72a5c7ec754e"
+                  ]
+                },
+                "field": {
+                  "id": "4pg0KIBsvQk8",
+                  "type": "multiple_choice",
+                  "ref": "0b80094a-f7a1-4e00-a57b-ea467bce7865"
+                }
+              },
+              {
+                "type": "choice",
+                "answer_url": "https://admin.typeform.com/form/TynKwfez/results?responseId=vgxp13qypcsihtbcp7ydr1vgxp1ddaq8&fieldId=0gzXqKcCSKr4#responses",
+                "choice": {
+                  "id": "qCLouDSRILPb",
+                  "label": "More directive (tell me what to do)",
+                  "ref": "48a86570-4d84-459e-acaf-437bd9beeb69"
+                },
+                "field": {
+                  "id": "0gzXqKcCSKr4",
+                  "type": "multiple_choice",
+                  "ref": "9a3ca8d8-f79b-46b2-9720-f0a8caede991"
+                }
+              },
+              {
+                "type": "text",
+                "text": "what's the method we are using",
+                "answer_url": "https://admin.typeform.com/form/TynKwfez/results?responseId=vgxp13qypcsihtbcp7ydr1vgxp1ddaq8&fieldId=yrKpk48v5EJb#responses",
+                "field": {
+                  "id": "yrKpk48v5EJb",
+                  "type": "long_text",
+                  "ref": "7d27aad5-4fec-444b-8cf9-43e5808db423"
+                }
+              },
+              {
+                "type": "choice",
+                "answer_url": "https://admin.typeform.com/form/TynKwfez/results?responseId=vgxp13qypcsihtbcp7ydr1vgxp1ddaq8&fieldId=yon9f4TxYWlI#responses",
+                "choice": {
+                  "id": "rhrWv3HuR8Kt",
+                  "label": "LinkedIn",
+                  "ref": "0013395a-e1de-4d15-be06-d3d6bbe2868a"
+                },
+                "field": {
+                  "id": "yon9f4TxYWlI",
+                  "type": "dropdown",
+                  "ref": "7a29c0d7-6fd6-4774-86fc-344c6e87ac1b"
+                }
+              }
+            ],
+            "ending": {
+              "id": "DefaultTyScreen",
+              "ref": "default_tys"
+            }
+          }
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Typeform Trigger": {
+      "main": [
+        [
+          {
+            "node": "Extract Intake Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Intake Data": {
+      "main": [
+        [
+          {
+            "node": "Search for Lead in Airtable",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create HTML Template": {
+      "main": [
+        [
+          {
+            "node": "Convert HTML to PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert HTML to PDF": {
+      "main": [
+        [
+          {
+            "node": "Upload Intake PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Client Drive Details": {
+      "main": [
+        [
+          {
+            "node": "Has Drive Folder?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Drive Folder?": {
+      "main": [
+        [
+          {
+            "node": "Update Airtable - Intake Complete",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search for Lead in Airtable": {
+      "main": [
+        [
+          {
+            "node": "Get Client Drive Details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Airtable - Intake Complete": {
+      "main": [
+        [
+          {
+            "node": "Create HTML Template",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload Intake PDF": {
+      "main": [
+        [
+          {
+            "node": "Get PDF Details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get PDF Details": {
+      "main": [
+        [
+          {
+            "node": "Save PDF URL to Airtable",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save PDF URL to Airtable": {
+      "main": [
+        [
+          {
+            "node": "Get many tasks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get many tasks": {
+      "main": [
+        [
+          {
+            "node": "Find Client Tasks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Client Tasks": {
+      "main": [
+        [
+          {
+            "node": "Tasks Exist?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tasks Exist?": {
+      "main": [
+        [
+          {
+            "node": "Mark Review Intake Complete",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Notify - Tasks Not Found",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Review Intake Complete": {
+      "main": [
+        [
+          {
+            "node": "Add Intake Summary Comment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add Intake Summary Comment": {
+      "main": [
+        [
+          {
+            "node": "Update Discovery Call Task",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Discovery Call Task": {
+      "main": [
+        [
+          {
+            "node": "Prepare Email Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Email Data": {
+      "main": [
+        [
+          {
+            "node": "Send Confirmation Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "96283547-5a3f-4017-97d5-d28d027c85b1",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "8844a39d1e598f34f99619697ad4222bfb69d7001fcc9b2949e0ee61d46cd2a5"
+  },
+  "id": "benMJONyS48Y1xvyeQieW",
+  "tags": []
+}
